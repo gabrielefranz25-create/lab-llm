@@ -44,6 +44,10 @@ def chiedi(domanda):
         f"{base_url}/chat/completions", json=payload, timeout=120, stream=True
     )
     response.raise_for_status()
+    # LM Studio puo' segnalare un errore con stato 200 e un JSON al posto
+    # dello stream di eventi.
+    if response.headers.get("content-type", "").startswith("application/json"):
+        raise RuntimeError(response.json().get("error", response.text))
 
     pezzi = []
     for riga in response.iter_lines():
@@ -55,7 +59,10 @@ def chiedi(domanda):
         dati = riga[len("data: "):]
         if dati == "[DONE]":
             break
-        pezzo = json.loads(dati)["choices"][0]["delta"].get("content")
+        evento = json.loads(dati)
+        if "error" in evento:
+            raise RuntimeError(evento["error"])
+        pezzo = evento["choices"][0]["delta"].get("content")
         if pezzo:
             print(pezzo, end="", flush=True)
             pezzi.append(pezzo)
@@ -83,3 +90,5 @@ while True:
         print("Errore HTTP:", errore.response.status_code, errore.response.text)
     except (json.JSONDecodeError, KeyError, IndexError):
         print("Stream non valido: evento data non interpretabile.")
+    except RuntimeError as errore:
+        print("Errore dal server:", errore)
