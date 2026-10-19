@@ -1,12 +1,12 @@
 # repo-lab-llm
 
-Client Python minimo che invia una domanda a un modello eseguito in locale con LM Studio e stampa la risposta. Materiale della Lezione 3 del corso Deep Learning e LLM (ITS Alto Adriatico).
+Client Python minimo per conversare da terminale con un modello eseguito in locale con LM Studio, con risposte in streaming. Materiale della Lezione 3 del corso Deep Learning e LLM (ITS Alto Adriatico).
 
 ## Contenuto della repository
 
 | File | Funzione |
 |---|---|
-| `client.py` | Scheletro del client da completare con Claude Code |
+| `client.py` | Client interattivo: domande da terminale, risposte in streaming, memoria della conversazione |
 | `requirements.txt` | Dipendenze con versioni fissate |
 | `.env.example` | Modello della configurazione locale, senza segreti |
 | `CLAUDE.md` | Istruzioni di sviluppo lette da Claude Code |
@@ -55,7 +55,7 @@ In VS Code selezionare l'interprete `.venv` con **Python: Select Interpreter**.
 .\.venv\Scripts\python.exe client.py
 ```
 
-Il client chiede una domanda alla volta e ricorda la conversazione finché non si scrive `esci` (nulla viene salvato su file); le righe vuote vengono ignorate e si esce scrivendo `esci`. La risposta arriva in streaming e compare man mano che il modello la genera.
+Il client chiede una domanda alla volta e ignora le righe vuote; si esce scrivendo `esci`. La risposta arriva in streaming e compare man mano che il modello la genera. La conversazione resta in memoria finché il client è aperto: nulla viene salvato su file.
 
 ## Diagnosi rapida
 
@@ -66,5 +66,22 @@ Il client chiede una domanda alla volta e ricorda la conversazione finché non s
 | `Attesa scaduta` | Carico del computer, tempi del modello |
 | Risposta vuota | `"reasoning_effort": "none"` nel payload: senza, il modello ragiona e consuma i token prima di rispondere |
 | `KeyError: 'LM_BASE_URL'` o `'LM_MODEL'` | `.env` mancante o variabile non definita |
+| `Errore dal server` | URL e percorso in `.env` (LM Studio segnala alcuni errori con stato 200); se la conversazione è molto lunga, riavviare il client per azzerarla |
+| `Stream non valido` | Risposta del server non nel formato atteso: controllare server e versione di LM Studio |
 
 Una risposta arrivata non è necessariamente corretta: va letta e valutata.
+
+## Flusso di lavoro Git
+
+Si sviluppa sul branch `dev`, si prova su `test` e solo dopo le prove si porta tutto su `main`, con un commit per ogni passo:
+
+```powershell
+git switch dev
+# modifiche, poi:
+git add <file>
+git commit -m "Descrizione del passo"
+git push
+git switch test; git merge --ff-only dev; git push
+# prove su test, poi:
+git switch main; git merge --ff-only test; git push
+```

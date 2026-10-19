@@ -1,10 +1,11 @@
 # Assistente del laboratorio
 - Obiettivo: un client Python per un modello locale.
-- client.py contiene lo scheletro da completare.
+- client.py contiene il client completo (ciclo da terminale, streaming, memoria in sessione).
 - README.md descrive la preparazione dell'ambiente.
 - requirements.txt contiene le dipendenze concordate.
 - Usare PowerShell nei comandi per Windows.
 - Preferire Python sincrono e modifiche circoscritte.
 - Non aggiungere dipendenze senza motivarle e concordarle.
 - Non inserire segreti, pesi o ambiente virtuale in Git.
+- Sviluppare su `dev`, provare su `test`, portare su `main` solo dopo le prove.
 - Non sono presenti test automatici in questo checkpoint.
