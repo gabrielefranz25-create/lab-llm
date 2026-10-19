@@ -55,7 +55,7 @@ In VS Code selezionare l'interprete `.venv` con **Python: Select Interpreter**.
 .\.venv\Scripts\python.exe client.py
 ```
 
-Il client chiede una domanda alla volta: ogni domanda è indipendente, le righe vuote vengono ignorate e si esce scrivendo `esci`.
+Il client chiede una domanda alla volta: ogni domanda è indipendente, le righe vuote vengono ignorate e si esce scrivendo `esci`. La risposta arriva in streaming e compare man mano che il modello la genera.
 
 ## Diagnosi rapida
 
