@@ -2,8 +2,9 @@
 
 Legge le domande da terminale e stampa le risposte del modello in
 streaming, man mano che vengono generate.
-Ogni domanda e' indipendente (nessuna cronologia); le righe vuote
-vengono ignorate e si esce scrivendo "esci".
+La conversazione resta in memoria finche' il programma e' aperto
+(nulla viene salvato su file); le righe vuote vengono ignorate e si
+esce scrivendo "esci".
 """
 
 import json
@@ -23,12 +24,12 @@ system = {
     "content": "Sei un assistente che risponde sempre in italiano, "
     "in modo breve e preciso.",
 }
+# Memoria della conversazione: system, poi domande e risposte alternate.
+messages = [system]
 
 
-def chiedi(domanda):
-    """Invia la domanda, stampa la risposta in streaming e la restituisce."""
-    messages = [system, {"role": "user", "content": domanda}]
-
+def chiedi(messages):
+    """Invia la conversazione, stampa la risposta in streaming e la restituisce."""
     # --- Payload ----------------------------------------------------------
     payload = {
         "model": model,
@@ -78,8 +79,10 @@ while True:
     if domanda.lower() == "esci":
         break
 
+    messages.append({"role": "user", "content": domanda})
+    risposta = ""
     try:
-        risposta = chiedi(domanda)
+        risposta = chiedi(messages)
         if not risposta:
             print("Risposta vuota: controllare reasoning_effort e max_tokens.")
     except requests.exceptions.Timeout:
@@ -92,3 +95,10 @@ while True:
         print("Stream non valido: evento data non interpretabile.")
     except RuntimeError as errore:
         print("Errore dal server:", errore)
+
+    # Restano in memoria solo gli scambi riusciti: dopo un errore o una
+    # risposta vuota la domanda viene tolta.
+    if risposta:
+        messages.append({"role": "assistant", "content": risposta})
+    else:
+        messages.pop()
