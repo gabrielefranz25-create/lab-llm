@@ -11,21 +11,40 @@ import requests
 from dotenv import load_dotenv
 
 # --- Configurazione -------------------------------------------------------
-# DA COMPLETARE: caricare .env e leggere LM_BASE_URL e LM_MODEL,
-# senza scrivere URL o nome del modello nel codice.
+load_dotenv()
+base_url = os.environ["LM_BASE_URL"]
+model = os.environ["LM_MODEL"]
 
 # --- Messaggi -------------------------------------------------------------
-# DA COMPLETARE: un'istruzione "system" in italiano e una domanda "user" fissa.
+messages = [
+    {
+        "role": "system",
+        "content": "Sei un assistente che risponde sempre in italiano, "
+        "in modo breve e preciso.",
+    },
+    {
+        "role": "user",
+        "content": "Che cos'e' un modello linguistico di grandi dimensioni?",
+    },
+]
 
 # --- Payload --------------------------------------------------------------
-# DA COMPLETARE: dizionario con model, messages, temperature, max_tokens,
-# reasoning_effort ("none", senza ragionamento) e stream.
+payload = {
+    "model": model,
+    "messages": messages,
+    "temperature": 0.2,
+    "max_tokens": 300,
+    "reasoning_effort": "none",
+    "stream": False,
+}
 
 # --- Chiamata -------------------------------------------------------------
 try:
-    # DA COMPLETARE: inviare il payload a {base_url}/chat/completions,
-    # controllare lo stato HTTP e stampare choices[0].message.content.
-    print("client.py non ancora completato: vedere il piano concordato.")
+    response = requests.post(
+        f"{base_url}/chat/completions", json=payload, timeout=120
+    )
+    response.raise_for_status()
+    print(response.json()["choices"][0]["message"]["content"])
 except requests.exceptions.Timeout:
     print("Attesa scaduta: controllare server, carico e tempi.")
 except requests.exceptions.ConnectionError:
