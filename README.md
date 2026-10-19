@@ -55,6 +55,8 @@ In VS Code selezionare l'interprete `.venv` con **Python: Select Interpreter**.
 .\.venv\Scripts\python.exe client.py
 ```
 
+Il client chiede una domanda alla volta: ogni domanda è indipendente, le righe vuote vengono ignorate e si esce scrivendo `esci`.
+
 ## Diagnosi rapida
 
 | Messaggio | Primo controllo |
