@@ -1,6 +1,7 @@
 # Specifica: assistente da terminale con grafo LangGraph, LM Studio e strumento orologio
 
-- **Stato**: BOZZA, in attesa di approvazione. Non verrà committata prima dell'approvazione.
+- **Stato**: APPROVATA dall'utente il 2026-10-26.
+- **Piano**: `docs/superpowers/plans/2026-10-26-assistente-orologio.md`.
 - **Data**: 2026-10-26.
 - **Branch**: `dev`.
 - **Cartella del progetto**: `lab_llm/`.
@@ -107,11 +108,14 @@ lab_llm/
     test_contesto.py
     test_grafo.py
     test_client.py
+    test_llm.py
     reale/
       test_lm_studio.py     prove con il modello vero (solo con PROVA_REALE=1)
   docs/
     COME_FUNZIONA.md
+    GUIDA_DOCKER.md         Docker su Windows: hypervisor, WSL 2, problemi e soluzioni
     GUIDA_PASSO_PASSO.md    (scritta alla fine)
+    PROSSIMA_SESSIONE.md    prompt pronto per riprendere il lavoro in una nuova sessione
     superpowers/specs/      questa specifica
     superpowers/plans/      il piano
 ```
@@ -313,6 +317,9 @@ Sessione terminata. La cronologia non è stata salvata.
   - si stampa `Assistente> [errore] Non riesco a contattare LM Studio su <URL>: <motivo breve>.`;
   - si registra un log ERROR;
   - la domanda fallita **non** entra nella cronologia e la sessione continua.
+  - Il client intercetta `openai.APIError`, che comprende connessione, timeout ed errori HTTP e
+    risale dal nodo `llm`, e `GraphRecursionError`. È l'unico punto in cui `client.py` conosce un
+    tipo della libreria del modello.
 - Nessun comando di reset: per ripartire si esce e si rientra (la cronologia si perde comunque).
 
 ## 9. Docker
@@ -356,6 +363,17 @@ docker compose run --rm assistente
   «Serve on Local Network» (Developer → Server Settings).
   - Lo verifichiamo nella prova reale e documentiamo nel README quello che risulta davvero
     necessario.
+- **Risoluzione dei problemi**: `docs/GUIDA_DOCKER.md` spiega, per ogni sintomo, causa, controlli
+  PowerShell e soluzione:
+  - virtualizzazione nel BIOS;
+  - WSL 2;
+  - attivare e disattivare l'hypervisor e Hyper-V (`bcdedit /set hypervisorlaunchtype auto|off`);
+  - convivenza con VMware Workstation;
+  - demone non avviato;
+  - container che non raggiunge LM Studio (Serve on Local Network, firewall);
+  - build fallita, chat che non riceve input, pulizia.
+
+  Le procedure non eseguite su questa macchina sono segnate come tali.
 
 ## 10. Log e print didattici
 
@@ -469,6 +487,10 @@ incompatibile, mi fermo e te lo segnalo prima di cambiarla.
   9. Docker e prova Docker;
   10. README e `COME_FUNZIONA.md`;
   11. `GUIDA_PASSO_PASSO.md`.
+
+**Pause di sessione** (richiesta dell'utente):
+- Dopo i task 3, 6 e 8 del piano, Claude ricorda di pulire (`/clear`) o riavviare la sessione.
+- Si riprende con il prompt di `docs/PROSSIMA_SESSIONE.md`.
 
 ## 15. Documentazione finale
 
