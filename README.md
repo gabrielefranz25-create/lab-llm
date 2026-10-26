@@ -1,12 +1,13 @@
 # repo-lab-llm
 
-Client Python minimo per conversare da terminale con un modello eseguito in locale con LM Studio, con risposte in streaming. Materiale della Lezione 3 del corso Deep Learning e LLM (ITS Alto Adriatico).
+Client Python minimo per conversare da terminale con un modello eseguito in locale con LM Studio, con risposte in streaming, e primo assistente basato su un grafo LangGraph. Materiale della Lezione 4 del corso Deep Learning e LLM (ITS Alto Adriatico). Lo stato finale della Lezione 3 è salvato nel tag `lezione-3`.
 
 ## Contenuto della repository
 
 | File | Funzione |
 |---|---|
 | `client.py` | Client interattivo: domande da terminale, risposte in streaming, memoria della conversazione |
+| `assistente/` | Lezione 4: pacchetto con il grafo LangGraph (`graph.py`) e il punto di avvio (`__main__.py`), in costruzione |
 | `requirements.txt` | Dipendenze con versioni fissate |
 | `.env.example` | Modello della configurazione locale, senza segreti |
 | `CLAUDE.md` | Istruzioni di sviluppo lette da Claude Code |
@@ -56,6 +57,12 @@ In VS Code selezionare l'interprete `.venv` con **Python: Select Interpreter**.
 ```
 
 Il client chiede una domanda alla volta e ignora le righe vuote; si esce scrivendo `esci`. La risposta arriva in streaming e compare man mano che il modello la genera. La conversazione resta in memoria finché il client è aperto: nulla viene salvato su file.
+
+L'assistente della Lezione 4 si avvia come pacchetto, dalla radice della repository:
+
+```powershell
+.\.venv\Scripts\python.exe -m assistente
+```
 
 ## Diagnosi rapida
 

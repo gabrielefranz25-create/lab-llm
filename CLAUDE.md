@@ -1,6 +1,8 @@
 # Assistente del laboratorio
-- Obiettivo: un client Python per un modello locale.
+- Obiettivo: un client Python per un modello locale e un assistente basato su un grafo LangGraph (Lezione 4).
 - client.py contiene il client completo (ciclo da terminale, streaming, memoria in sessione).
+- assistente/ contiene il grafo (graph.py) e il punto di avvio (__main__.py), in costruzione.
+- Lo stato finale della Lezione 3 è nel tag `lezione-3`.
 - README.md descrive la preparazione dell'ambiente.
 - requirements.txt contiene le dipendenze concordate.
 - Usare PowerShell nei comandi per Windows.
