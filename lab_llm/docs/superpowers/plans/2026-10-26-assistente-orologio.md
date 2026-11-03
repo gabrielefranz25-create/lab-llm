@@ -229,7 +229,7 @@ def limite_ricorsione(max_passi: int) -> int   # 2 * max_passi + 5
   `passi_strumento < max_passi`, altrimenti `"limite"`.
 
 **Passi**
-- [ ] Scrivere i test:
+- [x] Scrivere i test:
   - `test_finestra_cronologia_corta_invariata`;
   - `test_finestra_taglia_agli_ultimi_n`: 30 messaggi Human/AI alternati con n=20 danno una finestra
     lunga ≤ 20 che inizia con `HumanMessage` e finisce con l'ultimo messaggio;
@@ -241,10 +241,10 @@ def limite_ricorsione(max_passi: int) -> int   # 2 * max_passi + 5
   - `test_instrada_strumenti_sotto_limite` (passi=2, max=3);
   - `test_instrada_limite_raggiunto` (passi=3, max=3 → `"limite"`);
   - `test_limite_ricorsione` (3 → 11).
-- [ ] Eseguirli. Atteso: FAIL.
-- [ ] Implementare.
-- [ ] Eseguirli. Atteso: PASS.
-- [ ] Fare il commit `feat(grafo): stato, finestra di contesto e instradamento`.
+- [x] Eseguirli. Atteso: FAIL.
+- [x] Implementare.
+- [x] Eseguirli. Atteso: PASS.
+- [x] Fare il commit `feat(grafo): stato, finestra di contesto e instradamento`.
 
 ### Task 4: nodi e costruzione del grafo
 
