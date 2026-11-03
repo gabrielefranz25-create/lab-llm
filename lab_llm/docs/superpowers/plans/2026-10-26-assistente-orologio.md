@@ -413,18 +413,18 @@ def main() -> int                              # 0 se ok, 1 per ErroreConfiguraz
 - Una fixture costruisce il grafo vero a partire da `carica_config()`, che legge `.env`.
 
 **Passi**
-- [ ] Scrivere tre test:
+- [x] Scrivere tre test:
   - `test_modello_disponibile`: `verifica_modello` non solleva errori;
   - `test_ora_tokyo_usa_lo_strumento`: si trova un `AIMessage` con una tool_call `ora_corrente`
     e args `fuso_orario == "Asia/Tokyo"`, c'è un `ToolMessage` con `"Asia/Tokyo"` e l'ultimo
     `AIMessage` non è vuoto;
   - `test_ora_senza_luogo_usa_predefinito`: c'è una tool_call `ora_corrente` con args `{}` oppure
     `fuso_orario == "Europe/Rome"`.
-- [ ] `python -m pytest -v`. Atteso: i 3 test reali risultano SKIPPED e gli altri PASS.
-- [ ] `$env:PROVA_REALE="1"; python -m pytest -m reale -v; Remove-Item Env:PROVA_REALE`. Riporto
+- [x] `python -m pytest -v`. Atteso: i 3 test reali risultano SKIPPED e gli altri PASS.
+- [x] `$env:PROVA_REALE="1"; python -m pytest -m reale -v; Remove-Item Env:PROVA_REALE`. Riporto
   l'esito **così com'è**. Se gemma non usa lo strumento, il test fallisce e me ne occupo con
   `superpowers:systematic-debugging`, senza indebolire il test.
-- [ ] Fare il commit `test(reale): prove con il modello di LM Studio attivate da PROVA_REALE`.
+- [x] Fare il commit `test(reale): prove con il modello di LM Studio attivate da PROVA_REALE`.
 
 ### Task 8: Docker e guida alla risoluzione dei problemi
 
