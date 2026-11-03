@@ -1,11 +1,11 @@
 # Prossima sessione
 
-## Stato al 2026-10-26
-- Repository riordinata: `archivio/` per la lezione 3 e l'esercizio `assistente/`, `materiali/`
-  fuori da Git, progetto in `lab_llm/`.
-- Specifica **approvata**: `docs/superpowers/specs/2026-10-26-assistente-orologio-design.md`.
-- Piano scritto ma **da rileggere e approvare**: `docs/superpowers/plans/2026-10-26-assistente-orologio.md`.
-- Nessun codice scritto, nessun venv creato. Branch `dev`, allineato con `origin/dev`.
+## Stato al 2026-11-03
+- Specifica e piano **approvati**.
+- Task 1–3 completati (config, strumento orologio, funzioni pure del grafo): 28 test verdi.
+  Venv creato in `lab_llm/.venv`, `.env` locale presente.
+- Prossimo: **Task 4** (nodi e costruzione del grafo). Branch `dev`, commit locali non ancora
+  inviati con push.
 
 ## Prima di iniziare
 - Aprire Claude Code nella cartella `repo-lab-llm_l4` (oppure `lab_llm`).
