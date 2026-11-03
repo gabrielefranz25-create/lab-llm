@@ -497,12 +497,12 @@ def main() -> int                              # 0 se ok, 1 per ErroreConfiguraz
   - aggiungo i comandi di test (`python -m pytest`, la prova reale) e l'avvio.
 
 **Passi**
-- [ ] Generare il Mermaid con `python -c "from agente.graph import ...; print(g.get_graph().draw_mermaid())"`,
+- [x] Generare il Mermaid con `python -c "from agente.graph import ...; print(g.get_graph().draw_mermaid())"`,
   usando il modello finto o una lambda, e incollarlo in `COME_FUNZIONA.md`.
-- [ ] Nel README mettere solo comandi eseguiti davvero nei Task 1–8, con la diagnosi per LM Studio
+- [x] Nel README mettere solo comandi eseguiti davvero nei Task 1–8, con la diagnosi per LM Studio
   spento, modello assente, container che non raggiunge l'host e `.env` mancante.
-- [ ] Rileggere la documentazione rispetto al codice: nomi delle variabili, comandi, output.
-- [ ] Fare il commit `docs: README, spiegazione dell'agente e convenzioni aggiornate`.
+- [x] Rileggere la documentazione rispetto al codice: nomi delle variabili, comandi, output.
+- [x] Fare il commit `docs: README, spiegazione dell'agente e convenzioni aggiornate`.
 
 ### Task 10: verifica finale e guida passo-passo
 
