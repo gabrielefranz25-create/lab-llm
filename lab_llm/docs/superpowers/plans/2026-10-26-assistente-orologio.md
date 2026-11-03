@@ -329,7 +329,7 @@ def verifica_modello(config: Config, client: OpenAI | None = None) -> None
     modello o correggi LM_MODEL».
 
 **Passi**
-- [ ] Scrivere i test (il client finto ha `.models.list()` che restituisce `SimpleNamespace(id=...)`):
+- [x] Scrivere i test (il client finto ha `.models.list()` che restituisce `SimpleNamespace(id=...)`):
   - `test_verifica_modello_presente`;
   - `test_verifica_modello_assente_elenca_disponibili`;
   - `test_verifica_server_irraggiungibile`: il client finto solleva
@@ -339,10 +339,10 @@ def verifica_modello(config: Config, client: OpenAI | None = None) -> None
       `.bound.model_name == "m"`, `.bound.temperature == 0` e `.bound.openai_api_base == url`;
     - `kwargs["tools"][0]["function"]["name"] == "ora_corrente"`;
     - non si fa nessuna chiamata di rete.
-- [ ] Eseguirli. Atteso: FAIL.
-- [ ] Implementare.
-- [ ] Eseguirli. Atteso: PASS.
-- [ ] Fare il commit `feat(llm): collegamento a LM Studio e verifica del modello all'avvio`.
+- [x] Eseguirli. Atteso: FAIL.
+- [x] Implementare.
+- [x] Eseguirli. Atteso: PASS.
+- [x] Fare il commit `feat(llm): collegamento a LM Studio e verifica del modello all'avvio`.
 
 ### Task 6: interfaccia da terminale e avvio
 
