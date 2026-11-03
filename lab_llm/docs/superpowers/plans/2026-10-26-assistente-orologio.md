@@ -524,7 +524,7 @@ def main() -> int                              # 0 se ok, 1 per ErroreConfiguraz
     reale per il codice completo;
   - comandi PowerShell per test, prova reale, Docker e diagnosi.
 - [x] Fare il commit `docs: guida passo-passo per ricostruire il progetto da zero`.
-- [ ] Resoconto finale: che cosa è stato eseguito, con quale esito, e che cosa resta da provare.
+- [x] Resoconto finale: che cosa è stato eseguito, con quale esito, e che cosa resta da provare.
 
 ## Punti di pausa: riavviare e pulire la sessione (richiesta dell'utente)
 Alla fine di questi task ti ricordo di pulire la sessione (`/clear`) o di riavviare Claude Code, così
