@@ -183,7 +183,7 @@ def crea_ora_corrente(fuso_predefinito: str = "Europe/Rome",
   log WARNING.
 
 **Passi**
-- [ ] Scrivere i test, con `INVERNO = datetime(2026, 1, 15, 10, 0, tzinfo=timezone.utc)` e
+- [x] Scrivere i test, con `INVERNO = datetime(2026, 1, 15, 10, 0, tzinfo=timezone.utc)` e
   `ESTATE = datetime(2026, 7, 15, 10, 0, tzinfo=timezone.utc)`:
   - `test_roma_inverno`: il risultato contiene `"Europe/Rome (CET, UTC+01:00)"`,
     `"Data: giovedì 15 gennaio 2026"`, `"Ora: 11:00:00"` e
@@ -201,10 +201,10 @@ def crea_ora_corrente(fuso_predefinito: str = "Europe/Rome",
     `"Asia/Tokyo"`.
   - `test_schema_strumento`: `name == "ora_corrente"`, la `description` contiene `"Europe/Rome"`, e
     `fuso_orario` sta in `tool.args`.
-- [ ] Eseguirli. Atteso: FAIL (modulo assente).
-- [ ] Implementare `strumenti.py`.
-- [ ] Eseguire `python -m pytest -v`. Atteso: tutti PASS.
-- [ ] Fare il commit `feat(strumenti): strumento ora_corrente con fuso esplicito e predefinito italiano`.
+- [x] Eseguirli. Atteso: FAIL (modulo assente).
+- [x] Implementare `strumenti.py`.
+- [x] Eseguire `python -m pytest -v`. Atteso: tutti PASS.
+- [x] Fare il commit `feat(strumenti): strumento ora_corrente con fuso esplicito e predefinito italiano`.
 
 ### Task 3: funzioni pure del grafo (finestra di contesto e instradamento)
 
