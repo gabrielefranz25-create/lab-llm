@@ -54,6 +54,8 @@ def avvia_sessione(grafo, *, intestazione: str, server: str, recursion_limit: in
             break
         try:
             cronologia, risposta = rispondi(grafo, cronologia, testo, recursion_limit)
+        except KeyboardInterrupt:  # Ctrl+C mentre si aspetta il modello: si esce senza traceback
+            break
         except openai.APIError as errore:
             # La domanda fallita non entra nella cronologia: la sessione continua da dov'era.
             logger.error("LM Studio non raggiungibile su %s: %s", server, errore)

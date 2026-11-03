@@ -39,6 +39,9 @@ def main() -> int:
     except ErroreModello as errore:
         print(f"Errore: {errore}", file=sys.stderr)
         return 1
+    except KeyboardInterrupt:  # Ctrl+C durante l'attesa di LM Studio all'avvio
+        print("Interrotto.", file=sys.stderr)
+        return 130
 
     strumenti = [crea_ora_corrente(config.fuso_orario_predefinito)]
     grafo = costruisci_grafo(

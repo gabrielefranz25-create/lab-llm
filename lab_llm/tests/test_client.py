@@ -8,6 +8,7 @@ import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 
 import agente.config
+import agente.main
 from agente.client import avvia_sessione
 from agente.graph import costruisci_grafo
 from agente.main import configura_logging, main
@@ -119,6 +120,24 @@ def test_main_config_mancante(monkeypatch, capsys):
     monkeypatch.delenv("LM_MODEL", raising=False)
     assert main() == 1
     assert "LM_MODEL" in capsys.readouterr().err
+
+
+def test_ctrl_c_durante_la_risposta_chiude_la_sessione():
+    grafo = GrafoFinto(KeyboardInterrupt())
+    uscita = _sessione(grafo, ["Che ore sono?", "seconda"])
+    assert "Sessione terminata. La cronologia non è stata salvata." in uscita
+    assert len(grafo.ricevuti) == 1
+
+
+def test_main_ctrl_c_durante_la_verifica(monkeypatch, capsys):
+    def interrotta(_config):
+        raise KeyboardInterrupt
+    monkeypatch.setattr(agente.config, "load_dotenv", lambda **_: None)
+    monkeypatch.setenv("LM_BASE_URL", SERVER)
+    monkeypatch.setenv("LM_MODEL", "m")
+    monkeypatch.setattr(agente.main, "verifica_modello", interrotta)
+    assert main() == 130
+    assert "Interrotto" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize("nome", ["httpx", "httpx2", "httpcore", "openai"])
