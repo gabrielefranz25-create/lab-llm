@@ -2,10 +2,11 @@
 
 ## Stato al 2026-11-03
 - Specifica e piano **approvati**.
-- Task 1–3 completati (config, strumento orologio, funzioni pure del grafo): 28 test verdi.
+- Task 1–6 completati (config, strumento orologio, grafo, collegamento a LM Studio, chat da
+  terminale): 55 test verdi. Prova manuale con LM Studio riuscita (gemma chiama `ora_corrente`).
   Venv creato in `lab_llm/.venv`, `.env` locale presente.
-- Prossimo: **Task 4** (nodi e costruzione del grafo). Branch `dev`, commit locali non ancora
-  inviati con push.
+- Prossimo: **Task 7** (prove reali con LM Studio attivate da `PROVA_REALE`). Branch `dev`, commit
+  locali non ancora inviati con push.
 
 ## Prima di iniziare
 - Aprire Claude Code nella cartella `repo-lab-llm_l4` (oppure `lab_llm`).
