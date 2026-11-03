@@ -56,8 +56,7 @@ def finestra_contesto(messaggi: list[AnyMessage], n: int) -> list[AnyMessage]:
 
 def instrada_dopo_llm(stato: AgentState, max_passi: int) -> Literal["strumenti", "limite", "__end__"]:
     """Dopo il nodo llm: fine se non ci sono tool_call, altrimenti strumenti o limite."""
-    ultimo = stato["messages"][-1]
-    if not getattr(ultimo, "tool_calls", None):
+    if not _richieste(stato["messages"][-1]):
         # print("[passo] instradamento: nessuna tool_call -> fine del turno")
         return END
     if stato["passi_strumento"] < max_passi:
@@ -65,6 +64,16 @@ def instrada_dopo_llm(stato: AgentState, max_passi: int) -> Literal["strumenti",
         return "strumenti"
     # print(f"[passo] instradamento: tool_call ma limite di {max_passi} passaggi raggiunto -> limite")
     return "limite"
+
+
+def _richieste(messaggio: AnyMessage) -> list[dict]:
+    """Tool_call da chiudere con un ToolMessage, comprese quelle con argomenti non JSON.
+
+    Le chiamate malformate stanno in invalid_tool_calls, ma l'API le rimanda al modello come
+    tool_call: senza risposta la cronologia non sarebbe più valida.
+    """
+    return ((getattr(messaggio, "tool_calls", None) or [])
+            + (getattr(messaggio, "invalid_tool_calls", None) or []))
 
 
 def limite_ricorsione(max_passi: int) -> int:
@@ -85,12 +94,15 @@ def costruisci_grafo(modello: Runnable, strumenti: list[BaseTool], *, max_passi:
         return {"messages": [modello.invoke(da_inviare)]}
 
     def nodo_strumenti(stato: AgentState) -> dict:
-        richieste = stato["messages"][-1].tool_calls
+        richieste = _richieste(stato["messages"][-1])
         # print(f"[passo] nodo strumenti: eseguo {len(richieste)} tool_call")
         risultati = []
         for tc in richieste:
             strumento = per_nome.get(tc["name"])
-            if strumento is None:
+            if "error" in tc:  # invalid_tool_call: args è il testo grezzo, non un dizionario
+                logger.warning("tool_call malformata dal modello: %s %r", tc["name"], tc["args"])
+                testo = f"Errore: argomenti non validi per {tc['name']}: non sono JSON valido."
+            elif strumento is None:
                 logger.warning("strumento sconosciuto richiesto dal modello: %s", tc["name"])
                 testo = f"Errore: lo strumento '{tc['name']}' non esiste."
             else:
@@ -103,7 +115,7 @@ def costruisci_grafo(modello: Runnable, strumenti: list[BaseTool], *, max_passi:
         return {"messages": risultati, "passi_strumento": stato["passi_strumento"] + 1}
 
     def nodo_limite(stato: AgentState) -> dict:
-        richieste = stato["messages"][-1].tool_calls
+        richieste = _richieste(stato["messages"][-1])
         # print(f"[passo] nodo limite: {len(richieste)} tool_call non eseguite, chiudo il turno")
         logger.warning("limite di %d passaggi raggiunto: %d tool_call non eseguite",
                        max_passi, len(richieste))

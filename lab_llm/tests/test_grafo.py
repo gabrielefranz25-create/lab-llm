@@ -117,6 +117,30 @@ def test_argomenti_non_validi_diventano_toolmessage_errore():
     assert _tool_messages(stato)[0].content.startswith("Errore")
 
 
+def _ai_tool_malformata(id_chiamata: str) -> AIMessage:
+    # Argomenti non JSON: langchain-openai mette la chiamata in invalid_tool_calls, non in tool_calls.
+    return AIMessage(content="", invalid_tool_calls=[
+        {"name": "ora_corrente", "args": "{fuso", "id": id_chiamata, "error": "JSON non valido"}
+    ])
+
+
+def test_tool_call_malformata_riceve_toolmessage_errore():
+    modello = ModelloFinto([_ai_tool_malformata("c1"), AIMessage("Riprovo")])
+    stato = _esegui(_grafo(modello))
+    risposte = _tool_messages(stato)
+    assert [m.tool_call_id for m in risposte] == ["c1"]
+    assert risposte[0].content.startswith("Errore")
+    assert stato["messages"][-1].content == "Riprovo"
+
+
+def test_tool_call_malformata_al_limite_riceve_risposta():
+    modello = ModelloFinto([_ai_tool_malformata("c1")])
+    stato = _grafo(modello, max_passi=1).invoke(
+        {"messages": [HumanMessage("Che ore sono?")], "passi_strumento": 1})
+    assert [m.tool_call_id for m in _tool_messages(stato)] == ["c1"]
+    assert stato["messages"][-1].content == MESSAGGIO_LIMITE.format(n=1)
+
+
 def test_log_chiamata_strumento(caplog):
     modello = ModelloFinto([
         _ai_tool([("ora_corrente", {"fuso_orario": "Asia/Tokyo"}, "c1")]),
