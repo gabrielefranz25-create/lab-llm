@@ -2,11 +2,14 @@
 
 ## Stato al 2026-11-03
 - Specifica e piano **approvati**.
-- Task 1–6 completati (config, strumento orologio, grafo, collegamento a LM Studio, chat da
-  terminale): 55 test verdi. Prova manuale con LM Studio riuscita (gemma chiama `ora_corrente`).
-  Venv creato in `lab_llm/.venv`, `.env` locale presente.
-- Prossimo: **Task 7** (prove reali con LM Studio attivate da `PROVA_REALE`). Branch `dev`, commit
-  locali non ancora inviati con push.
+- Task 1–8 completati (config, strumento orologio, grafo, collegamento a LM Studio, chat da
+  terminale, prove reali, Docker): 55 test verdi + 3 prove reali verdi con `PROVA_REALE=1`.
+  Docker verificato: build, rete container→LM Studio e chat in container (input via pipe).
+  Guida Docker in `docs/GUIDA_DOCKER.md`. Venv in `lab_llm/.venv`, `.env` locale presente.
+- Resta da provare: `docker compose run --rm assistente` con la tty interattiva nel tuo terminale.
+- Prossimo: **Task 9** (documentazione: README, COME_FUNZIONA, Mermaid del grafo), poi **Task 10**
+  (verifica finale, revisione indipendente, guida passo-passo). Branch `dev`, commit locali non
+  ancora inviati con push.
 
 ## Prima di iniziare
 - Aprire Claude Code nella cartella `repo-lab-llm_l4` (oppure `lab_llm`).
