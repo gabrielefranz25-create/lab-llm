@@ -470,22 +470,22 @@ def main() -> int                              # 0 se ok, 1 per ErroreConfiguraz
     l'hypervisor, né riavvio il PC, senza il tuo permesso esplicito.
 
 **Passi**
-- [ ] **Prerequisito**: Docker Desktop avviato, cosa che ti chiederò di fare. Controllo con
+- [x] **Prerequisito**: Docker Desktop avviato, cosa che ti chiederò di fare. Controllo con
   `docker info`.
-- [ ] `docker compose config`: il servizio `assistente` ha
+- [x] `docker compose config`: il servizio `assistente` ha
   `LM_BASE_URL=http://host.docker.internal:1234/v1`.
-- [ ] `docker compose build`: build completata.
-- [ ] Verifica non interattiva della rete container→host:
+- [x] `docker compose build`: build completata.
+- [x] Verifica non interattiva della rete container→host:
   `docker compose run --rm assistente python -c "from agente.llm import verifica_modello; from agente.config import carica_config; verifica_modello(carica_config()); print('ok')"`.
   - Atteso: `ok`.
   - Se fallisce per la rete, attivo in LM Studio «Serve on Local Network», ripeto la prova e annoto
     nel README che cosa è servito davvero.
-- [ ] Prova interattiva: `docker compose run --rm assistente`, poi «Che ore sono?», controllo del log
+- [x] Prova interattiva: `docker compose run --rm assistente`, poi «Che ore sono?», controllo del log
   dello strumento e della risposta, infine `esci`. Lo fai tu nel terminale, oppure io con
   input passato via pipe se la tty lo consente; nel resoconto indico chi l'ha eseguita.
-- [ ] Rileggere `GUIDA_DOCKER.md` e controllare che i comandi marcati «verificato» siano stati
+- [x] Rileggere `GUIDA_DOCKER.md` e controllare che i comandi marcati «verificato» siano stati
   eseguiti davvero.
-- [ ] Fare il commit `build(docker): immagine e compose per l'avvio con LM Studio sull'host`, con la
+- [x] Fare il commit `build(docker): immagine e compose per l'avvio con LM Studio sull'host`, con la
   guida Docker in un commit separato `docs(docker): ...`.
 
 ### Task 9: documentazione
