@@ -277,7 +277,7 @@ def costruisci_grafo(modello: Runnable, strumenti: list[BaseTool], *, max_passi:
 salva `messaggi` in `self.chiamate` e restituisce la risposta successiva.
 
 **Passi**
-- [ ] Scrivere i test, con lo strumento `crea_ora_corrente(orologio=lambda: INVERNO)`:
+- [x] Scrivere i test, con lo strumento `crea_ora_corrente(orologio=lambda: INVERNO)`:
   - `test_risposta_diretta`: un solo `AIMessage("Ciao")` → lo stato finale ha 2 messaggi e
     `passi_strumento == 0`.
   - `test_ciclo_con_strumento`:
@@ -303,10 +303,10 @@ salva `messaggi` in `self.chiamate` e restituisce la risposta successiva.
     - `chiamate[0][0]` è `SystemMessage` e contiene `"Europe/Rome"`;
     - `len(chiamate[0]) <= 3`.
   - `test_grafo_ha_i_nodi_attesi`: `{"llm","strumenti","limite"}` ⊆ `get_graph().nodes`.
-- [ ] Eseguirli. Atteso: FAIL.
-- [ ] Implementare.
-- [ ] Eseguire `python -m pytest -v`. Atteso: tutti PASS.
-- [ ] Fare il commit `feat(grafo): nodi llm, strumenti e limite con costruzione del grafo`.
+- [x] Eseguirli. Atteso: FAIL.
+- [x] Implementare.
+- [x] Eseguire `python -m pytest -v`. Atteso: tutti PASS.
+- [x] Fare il commit `feat(grafo): nodi llm, strumenti e limite con costruzione del grafo`.
 
 ### Task 5: collegamento a LM Studio
 
