@@ -376,7 +376,7 @@ def main() -> int                              # 0 se ok, 1 per ErroreConfiguraz
   `verifica_modello`, `crea_ora_corrente`, `crea_modello`, `costruisci_grafo`, `avvia_sessione`.
 
 **Passi**
-- [ ] Scrivere i test, con un grafo finto oppure il grafo vero con `ModelloFinto` e `leggi`/`scrivi`
+- [x] Scrivere i test, con un grafo finto oppure il grafo vero con `ModelloFinto` e `leggi`/`scrivi`
   simulati da liste:
   - `test_cronologia_mantenuta_tra_turni`: al secondo turno il modello finto riceve anche la prima
     domanda e la prima risposta;
@@ -393,16 +393,16 @@ def main() -> int                              # 0 se ok, 1 per ErroreConfiguraz
     `"Assistente> (il modello non ha restituito testo)"`;
   - `test_main_config_mancante`: con monkeypatch dell'ambiente senza `LM_MODEL` (e
     `load_dotenv` disattivato), `main()` restituisce 1 e lo stderr contiene `LM_MODEL`.
-- [ ] Eseguirli. Atteso: FAIL.
-- [ ] Implementare.
-- [ ] Eseguire `python -m pytest -v`. Atteso: tutti PASS.
-- [ ] **Prova manuale con LM Studio**: lanciare `python -m agente` e fare la sessione del §8 («Ciao»,
+- [x] Eseguirli. Atteso: FAIL.
+- [x] Implementare.
+- [x] Eseguire `python -m pytest -v`. Atteso: tutti PASS.
+- [x] **Prova manuale con LM Studio**: lanciare `python -m agente` e fare la sessione del §8 («Ciao»,
   «Che ore sono?», «E a Tokyo?», «Di cosa abbiamo parlato?», `esci`).
   - Annotare nel resoconto quello che succede davvero, cioè se gemma chiama lo strumento e con quali
     argomenti.
   - Poi rifare la prova con LM Studio fermo (oppure con un URL sbagliato): `main` deve restituire 1
     con un messaggio chiaro.
-- [ ] Fare il commit `feat(client): interfaccia da terminale e avvio dell'applicazione`.
+- [x] Fare il commit `feat(client): interfaccia da terminale e avvio dell'applicazione`.
 
 ### Task 7: prove reali con LM Studio
 
