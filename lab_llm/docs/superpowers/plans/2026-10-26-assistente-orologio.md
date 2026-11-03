@@ -132,12 +132,12 @@ def carica_config(ambiente: Mapping[str, str] | None = None) -> Config
 - Un valore stringa vuota conta come assente.
 
 **Passi**
-- [ ] Creare il venv:
+- [x] Creare il venv:
   `deactivate` (se attivo), poi `py -3.13 -m venv .venv`, `.\.venv\Scripts\Activate.ps1`,
   `python -m pip install -r requirements-dev.txt`.
   - Atteso: installazione riuscita.
   - Se fallisce per incompatibilità: **STOP**, lo segnalo e non cambio le versioni.
-- [ ] Scrivere `tests/test_config.py`:
+- [x] Scrivere `tests/test_config.py`:
   - `test_valori_minimi_e_default`: con `{"LM_BASE_URL": "http://h:1/v1", "LM_MODEL": "m"}` si ottiene
     fuso `"Europe/Rome"`, passi `3`, contesto `20`, timeout `60.0` e log `"INFO"`.
   - `test_variabile_obbligatoria_mancante` (parametrizzato su `LM_BASE_URL` e `LM_MODEL`): solleva
@@ -147,14 +147,14 @@ def carica_config(ambiente: Mapping[str, str] | None = None) -> Config
   - `test_valori_non_validi` (parametrizzato): `MAX_PASSI_STRUMENTO="0"`, `"tre"`,
     `MAX_MESSAGGI_CONTESTO="1"`, `LM_TIMEOUT="-5"`, `FUSO_ORARIO_PREDEFINITO="Roma"` e
     `LOG_LEVEL="CHIACCHIERA"` sollevano tutti `ErroreConfigurazione` con il nome della variabile.
-- [ ] Eseguire `python -m pytest tests/test_config.py -v`.
+- [x] Eseguire `python -m pytest tests/test_config.py -v`.
   - Atteso: FAIL, `ModuleNotFoundError: agente.config`.
-- [ ] Implementare `config.py`:
+- [x] Implementare `config.py`:
   - limiti dal §11 (passi ≥ 1, contesto ≥ 2, timeout > 0);
   - fuso validato con `ZoneInfo` (gestendo `ZoneInfoNotFoundError` e `ValueError`);
   - livello di log tra `DEBUG`, `INFO`, `WARNING`, `ERROR`.
-- [ ] Eseguire `python -m pytest -v`. Atteso: tutti PASS.
-- [ ] Fare il commit `feat(config): impalcatura del progetto e lettura delle variabili d'ambiente`.
+- [x] Eseguire `python -m pytest -v`. Atteso: tutti PASS.
+- [x] Fare il commit `feat(config): impalcatura del progetto e lettura delle variabili d'ambiente`.
   - Includere: `.gitignore`, `.env.example`, requirements, `pytest.ini`, `agente/__init__.py`,
     `config.py`, il test.
   - Controllare che `git status` **non** mostri `.env` né `.venv`.
