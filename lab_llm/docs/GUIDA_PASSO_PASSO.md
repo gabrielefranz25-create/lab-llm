@@ -99,8 +99,8 @@ max_messaggi_contesto, fuso_predefinito)`.
 - Il prompt di sistema (in italiano) dice di usare **sempre** `ora_corrente` per l'ora e di indicare il
   fuso nella risposta.
 - Nodo `llm`: `[prompt] + finestra_contesto(...)` → `modello.invoke` → un `AIMessage`.
-- Nodo `strumenti`: per ogni tool_call esegue lo strumento; nome sconosciuto o argomenti sbagliati
-  diventano testo d'errore; log INFO; un `ToolMessage` per ogni `tool_call_id`; `passi_strumento + 1`.
+- Nodo `strumenti`: per ogni tool_call (comprese le `invalid_tool_calls`, con argomenti non JSON)
+  esegue lo strumento; nome sconosciuto o argomenti sbagliati diventano testo d'errore; log INFO; un `ToolMessage` per ogni `tool_call_id`; `passi_strumento + 1`.
 - Nodo `limite`: un `ToolMessage` «Non eseguito» per ogni tool_call in sospeso, poi un `AIMessage`
   per l'utente; log WARNING.
 - Archi: `START → llm`, `llm ⇢ (strumenti | limite | END)`, `strumenti → llm`, `limite → END`.
@@ -126,7 +126,8 @@ nello stesso messaggio, log, prompt e finestra inviati al modello).
 **`agente/client.py`**
 - `rispondi(grafo, cronologia, testo, recursion_limit)`: un turno; restituisce la nuova cronologia e
   il testo (o «(il modello non ha restituito testo)»).
-- `avvia_sessione(...)`: ciclo `Tu> ` / `Assistente> `; esce con `esci`/`exit`/`quit`, Ctrl+C, EOF;
+- `avvia_sessione(...)`: ciclo `Tu> ` / `Assistente> `; esce con `esci`/`exit`/`quit`, Ctrl+C (anche
+  mentre si aspetta il modello), EOF;
   ignora l'input vuoto e il BOM che PowerShell aggiunge all'input via pipe; con `openai.APIError` o
   `GraphRecursionError` stampa un errore leggibile e **non** tocca la cronologia.
 - `leggi` e `scrivi` sono parametri (default `input` e `print`): i test li sostituiscono.

@@ -98,8 +98,11 @@ class AgentState(TypedDict):
 | Nodo | Che cosa fa | Restituisce |
 |---|---|---|
 | `llm` | invia `[prompt di sistema] + finestra_contesto(messages)` al modello, che ha già lo strumento collegato (`bind_tools`) | `{"messages": [AIMessage]}` |
-| `strumenti` | esegue **ogni** tool_call dell'ultimo messaggio; scrive un log INFO per ciascuna; uno strumento sconosciuto o argomenti sbagliati diventano un testo d'errore, non un'eccezione | `{"messages": [ToolMessage, ...], "passi_strumento": passi + 1}` |
+| `strumenti` | esegue **ogni** tool_call dell'ultimo messaggio; scrive un log INFO per ciascuna; uno strumento sconosciuto, argomenti sbagliati o argomenti che non sono JSON valido (le `invalid_tool_calls` di LangChain) diventano un testo d'errore, non un'eccezione | `{"messages": [ToolMessage, ...], "passi_strumento": passi + 1}` |
 | `limite` | risponde «Non eseguito» a ogni tool_call rimasta in sospeso (altrimenti la cronologia non sarebbe valida per l'API) e aggiunge il messaggio per l'utente; log WARNING | `{"messages": [ToolMessage, ..., AIMessage]}` |
+
+Le tool_call con argomenti non JSON contano come tool_call: l'API le rimanda al modello, quindi
+devono ricevere anch'esse un `ToolMessage`, altrimenti la cronologia non sarebbe più valida.
 
 `instrada_dopo_llm(stato, max_passi)` è una funzione pura: nessuna tool_call → `END`; tool_call con
 `passi_strumento < max_passi` → `strumenti`; altrimenti → `limite`.

@@ -506,16 +506,16 @@ def main() -> int                              # 0 se ok, 1 per ErroreConfiguraz
 
 ### Task 10: verifica finale e guida passo-passo
 
-- [ ] `superpowers:verification-before-completion`:
+- [x] `superpowers:verification-before-completion`:
   - eseguire `python -m pytest -v`, che deve risultare tutto PASS con le prove reali SKIPPED;
   - prova reale di nuovo;
   - `git status` pulito;
   - `git log --oneline` per rivedere la storia.
-- [ ] Controllare che **tutti** i print didattici siano commentati:
+- [x] Controllare che **tutti** i print didattici siano commentati:
   `Select-String -Path agente\*.py -Pattern '^\s*print\("\[passo\]'` non deve trovare nulla.
-- [ ] Revisione finale con `superpowers:requesting-code-review`, affidata a un revisore nuovo su tutto
+- [x] Revisione finale con `superpowers:requesting-code-review`, affidata a un revisore nuovo su tutto
   il diff da `b1ba069`.
-- [ ] Creare `lab_llm/docs/GUIDA_PASSO_PASSO.md`, che spiega come rifare tutto da zero:
+- [x] Creare `lab_llm/docs/GUIDA_PASSO_PASSO.md`, che spiega come rifare tutto da zero:
   - prerequisiti;
   - creazione della cartella;
   - venv;
@@ -523,7 +523,7 @@ def main() -> int                              # 0 se ok, 1 per ErroreConfiguraz
   - ogni file nell'ordine dei Task, con lo scopo e i punti chiave del contenuto, rimandando al file
     reale per il codice completo;
   - comandi PowerShell per test, prova reale, Docker e diagnosi.
-- [ ] Fare il commit `docs: guida passo-passo per ricostruire il progetto da zero`.
+- [x] Fare il commit `docs: guida passo-passo per ricostruire il progetto da zero`.
 - [ ] Resoconto finale: che cosa è stato eseguito, con quale esito, e che cosa resta da provare.
 
 ## Punti di pausa: riavviare e pulire la sessione (richiesta dell'utente)

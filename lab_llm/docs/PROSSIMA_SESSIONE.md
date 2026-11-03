@@ -1,15 +1,15 @@
 # Prossima sessione
 
 ## Stato al 2026-11-03
-- Specifica e piano **approvati**.
-- Task 1–8 completati (config, strumento orologio, grafo, collegamento a LM Studio, chat da
-  terminale, prove reali, Docker): 55 test verdi + 3 prove reali verdi con `PROVA_REALE=1`.
-  Docker verificato: build, rete container→LM Studio e chat in container (input via pipe).
-  Guida Docker in `docs/GUIDA_DOCKER.md`. Venv in `lab_llm/.venv`, `.env` locale presente.
+- Specifica e piano **approvati**; **tutti i task (1–10) completati**.
+- 60 test automatici verdi + 3 prove reali verdi con `PROVA_REALE=1`. Docker verificato (build, rete
+  container→LM Studio, chat con input via pipe).
+- Documentazione: `README.md`, `docs/COME_FUNZIONA.md`, `docs/GUIDA_DOCKER.md`,
+  `docs/GUIDA_PASSO_PASSO.md`.
+- Revisione finale indipendente fatta: 2 problemi importanti corretti (tool_call con argomenti non
+  JSON, Ctrl+C durante l'attesa del modello).
 - Resta da provare: `docker compose run --rm assistente` con la tty interattiva nel tuo terminale.
-- Prossimo: **Task 9** (documentazione: README, COME_FUNZIONA, Mermaid del grafo), poi **Task 10**
-  (verifica finale, revisione indipendente, guida passo-passo). Branch `dev`, commit locali non
-  ancora inviati con push.
+- Branch `dev`, commit locali non ancora inviati con push.
 
 ## Prima di iniziare
 - Aprire Claude Code nella cartella `repo-lab-llm_l4` (oppure `lab_llm`).
