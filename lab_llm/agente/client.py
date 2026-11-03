@@ -44,7 +44,8 @@ def avvia_sessione(grafo, *, intestazione: str, server: str, recursion_limit: in
     cronologia: list[AnyMessage] = []
     while True:
         try:
-            testo = leggi("\nTu> ").strip()
+            # lstrip del BOM: PowerShell 5.1 lo antepone all'input passato via pipe.
+            testo = leggi("\nTu> ").lstrip("﻿").strip()
         except (EOFError, KeyboardInterrupt):
             break
         if not testo:

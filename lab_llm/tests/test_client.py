@@ -76,6 +76,14 @@ def test_uscita_con_comando(comando):
     assert "Sessione terminata. La cronologia non è stata salvata." in uscita
 
 
+def test_uscita_con_bom_iniziale():
+    # PowerShell 5.1 antepone il BOM UTF-8 all'input passato via pipe ("esci" | python -m agente).
+    modello = ModelloFinto([])
+    uscita = _sessione(_grafo(modello), ["﻿esci"])
+    assert modello.chiamate == []
+    assert "Sessione terminata" in uscita
+
+
 def test_uscita_con_eof():
     uscita = _sessione(_grafo(ModelloFinto([])), [EOFError()])
     assert "Sessione terminata" in uscita
