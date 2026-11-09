@@ -33,12 +33,16 @@ MESSAGGIO_LIMITE = (
 PROMPT_RIASSUNTO = (
     "Riassumi in italiano, in poche frasi, la conversazione che ti viene data. Conserva i fatti "
     "utili per continuarla: nome, preferenze e richieste dell'utente, luoghi e fusi orari citati, "
-    "risposte già date. Scrivi solo il riassunto, senza commenti."
+    "risposte già date. Chiama sempre l'utente \"l'utente\", in terza persona "
+    "(es. \"L'utente si chiama ... e vive a ...\"): chi leggerà il riassunto deve capire che quei "
+    "fatti riguardano la persona con cui sta parlando. Scrivi solo il riassunto, senza commenti."
 )
 
 # Nome del SystemMessage che, in testa alla cronologia, contiene il riassunto dei messaggi vecchi.
 NOME_RIASSUNTO = "riassunto"
-INTESTAZIONE_RIASSUNTO = "Riassunto della conversazione precedente:\n"
+INTESTAZIONE_RIASSUNTO = (
+    "Riassunto della conversazione precedente con l'utente (fatti già detti, usali per rispondere):\n"
+)
 
 
 class AgentState(TypedDict):
