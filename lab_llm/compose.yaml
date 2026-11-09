@@ -8,3 +8,8 @@ services:
       - "host.docker.internal:host-gateway"
     stdin_open: true
     tty: true
+    volumes:
+      - note:/app/dati
+
+volumes:
+  note: {}
