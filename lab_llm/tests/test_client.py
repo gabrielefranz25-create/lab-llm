@@ -11,7 +11,8 @@ import agente.config
 import agente.main
 from agente.client import avvia_sessione
 from agente.graph import costruisci_grafo
-from agente.main import configura_logging, main
+from agente.config import carica_config
+from agente.main import configura_logging, main, server_da_config
 from agente.strumenti import crea_ora_corrente
 
 SERVER = "http://h:1/v1"
@@ -144,3 +145,72 @@ def test_main_ctrl_c_durante_la_verifica(monkeypatch, capsys):
 def test_configura_logging_silenzia_librerie_http(nome):
     configura_logging("INFO")
     assert logging.getLogger(nome).level == logging.WARNING
+
+
+def _config(**extra):
+    base = {"LM_BASE_URL": SERVER, "LM_MODEL": "m", "METEO_TIMEOUT": "4", "MCP_TIMEOUT": "30"}
+    return carica_config({**base, **extra})
+
+
+def test_server_da_config():
+    (meteo,) = server_da_config(_config(SERVER_MCP="meteo"))
+    assert meteo.nome == "meteo"
+    assert meteo.argomenti == ("-m", "server_mcp.meteo")
+    assert meteo.env["METEO_TIMEOUT"] == "4.0"
+    assert server_da_config(_config(SERVER_MCP="")) == []
+
+
+def test_server_da_config_log_server_e_framework():
+    (meteo,) = server_da_config(_config(SERVER_MCP="meteo", LOG_LEVEL="DEBUG"))
+    assert meteo.env["LOG_LEVEL"] == "DEBUG"  # i log del nostro server seguono l'agente
+    assert meteo.env["FASTMCP_LOG_LEVEL"] == "WARNING"  # niente "Starting MCP server" nella chat
+
+
+def _avvia_main_con_mcp(monkeypatch, connessione):
+    monkeypatch.setattr(agente.config, "load_dotenv", lambda **_: None)
+    monkeypatch.setenv("LM_BASE_URL", SERVER)
+    monkeypatch.setenv("LM_MODEL", "m")
+    monkeypatch.setattr(agente.main, "verifica_modello", lambda _config: None)
+    monkeypatch.setattr(agente.main, "crea_modello", lambda _config, _strumenti: object())
+    monkeypatch.setattr(agente.main, "crea_riassuntore", lambda _config: object())
+    monkeypatch.setattr(agente.main, "ConnessioneMCP", connessione)
+    return main()
+
+
+def test_main_ctrl_c_durante_l_avvio_dei_server(monkeypatch, capsys):
+    class Interrotta:
+        def __init__(self, *_):
+            pass
+
+        def __enter__(self):
+            raise KeyboardInterrupt
+
+        def __exit__(self, *_):
+            return False
+
+    assert _avvia_main_con_mcp(monkeypatch, Interrotta) == 130
+    assert "Interrotto" in capsys.readouterr().err
+
+
+def test_main_intestazione_con_strumenti_mcp(monkeypatch):
+    from langchain_core.tools import StructuredTool
+    finto = StructuredTool.from_function(func=lambda: "x", name="meteo_attuale", description="d")
+    visto = {}
+
+    class Finta:
+        def __init__(self, servers, timeout):
+            visto["servers"] = servers
+            self.strumenti = [finto]
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            visto["chiusa"] = True
+            return False
+
+    monkeypatch.setattr(agente.main, "avvia_sessione",
+                        lambda grafo, intestazione, server, recursion_limit: visto.update(testata=intestazione))
+    assert _avvia_main_con_mcp(monkeypatch, Finta) == 0
+    assert "Strumenti: ora_corrente, meteo_attuale" in visto["testata"]
+    assert visto["servers"][0].nome == "meteo" and visto["chiusa"]

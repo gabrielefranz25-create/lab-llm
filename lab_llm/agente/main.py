@@ -4,9 +4,10 @@ import logging
 import sys
 
 from agente.client import avvia_sessione
-from agente.config import ErroreConfigurazione, carica_config
+from agente.config import Config, ErroreConfigurazione, carica_config
 from agente.graph import costruisci_grafo, limite_ricorsione
 from agente.llm import ErroreModello, crea_modello, crea_riassuntore, verifica_modello
+from agente.mcp_ponte import ConnessioneMCP, ServerMCP, unisci_strumenti
 from agente.strumenti import crea_ora_corrente
 
 logger = logging.getLogger(__name__)
@@ -22,6 +23,18 @@ def configura_logging(livello: str) -> None:
     # httpx2 è il nome del logger HTTP usato dalla versione installata di openai.
     for rumoroso in ("httpx", "httpx2", "httpcore", "openai"):
         logging.getLogger(rumoroso).setLevel(logging.WARNING)
+
+
+def server_da_config(config: Config) -> list[ServerMCP]:
+    """Server MCP da avviare, secondo SERVER_MCP. Ai sottoprocessi passano il livello di log
+    dell'agente (per i log del server) e FASTMCP_LOG_LEVEL=WARNING (per tacere la riga
+    "Starting MCP server" del framework, che finirebbe sul terminale della chat)."""
+    comuni = {"LOG_LEVEL": config.log_level, "FASTMCP_LOG_LEVEL": "WARNING"}
+    disponibili = {
+        "meteo": ServerMCP("meteo", ("-m", "server_mcp.meteo"),
+                           {**comuni, "METEO_TIMEOUT": str(config.meteo_timeout)}),
+    }
+    return [disponibili[nome] for nome in config.server_mcp]
 
 
 def main() -> int:
@@ -44,20 +57,27 @@ def main() -> int:
         print("Interrotto.", file=sys.stderr)
         return 130
 
-    strumenti = [crea_ora_corrente(config.fuso_orario_predefinito)]
-    grafo = costruisci_grafo(
-        crea_modello(config, strumenti), strumenti,
-        max_passi=config.max_passi_strumento,
-        max_messaggi_contesto=config.max_messaggi_contesto,
-        fuso_predefinito=config.fuso_orario_predefinito,
-        riassuntore=crea_riassuntore(config),
-        messaggi_da_tenere=config.messaggi_da_tenere,
-    )
-    avvia_sessione(
-        grafo,
-        intestazione=(f"Modello: {config.lm_model}  |  Server: {config.lm_base_url}  |  "
-                      f"Fuso predefinito: {config.fuso_orario_predefinito}"),
-        server=config.lm_base_url,
-        recursion_limit=limite_ricorsione(config.max_passi_strumento),
-    )
+    try:
+        with ConnessioneMCP(server_da_config(config), config.mcp_timeout) as connessione:
+            strumenti = unisci_strumenti([crea_ora_corrente(config.fuso_orario_predefinito)],
+                                         connessione.strumenti)
+            grafo = costruisci_grafo(
+                crea_modello(config, strumenti), strumenti,
+                max_passi=config.max_passi_strumento,
+                max_messaggi_contesto=config.max_messaggi_contesto,
+                fuso_predefinito=config.fuso_orario_predefinito,
+                riassuntore=crea_riassuntore(config),
+                messaggi_da_tenere=config.messaggi_da_tenere,
+            )
+            avvia_sessione(
+                grafo,
+                intestazione=(f"Modello: {config.lm_model}  |  Server: {config.lm_base_url}  |  "
+                              f"Fuso predefinito: {config.fuso_orario_predefinito}  |  "
+                              f"Strumenti: {', '.join(s.name for s in strumenti)}"),
+                server=config.lm_base_url,
+                recursion_limit=limite_ricorsione(config.max_passi_strumento),
+            )
+    except KeyboardInterrupt:  # Ctrl+C durante l'avvio dei server MCP
+        print("Interrotto.", file=sys.stderr)
+        return 130
     return 0

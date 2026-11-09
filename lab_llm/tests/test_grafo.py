@@ -4,8 +4,9 @@ import logging
 from datetime import datetime, timezone
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
+from langchain_core.tools import StructuredTool
 
-from agente.graph import MESSAGGIO_LIMITE, costruisci_grafo
+from agente.graph import MESSAGGIO_LIMITE, PROMPT_SISTEMA, costruisci_grafo
 from agente.strumenti import crea_ora_corrente
 
 INVERNO = datetime(2026, 1, 15, 10, 0, tzinfo=timezone.utc)
@@ -148,8 +149,50 @@ def test_log_chiamata_strumento(caplog):
     ])
     with caplog.at_level(logging.INFO):
         _esegui(_grafo(modello))
-    assert any("strumento ora_corrente" in r.getMessage() and "Asia/Tokyo" in r.getMessage()
+    assert any(all(parte in r.getMessage() for parte in
+                   ("strumento=ora_corrente", "origine=locale", "call_id=c1", "esito=ok", "Asia/Tokyo"))
                for r in caplog.records)
+
+
+def _meteo_finto(risultato: str) -> StructuredTool:
+    return StructuredTool.from_function(
+        func=lambda citta="": risultato, name="meteo_attuale", description="finto",
+        metadata={"origine": "mcp:meteo"},
+    )
+
+
+def _grafo_con(modello, *strumenti):
+    return costruisci_grafo(modello, [crea_ora_corrente(orologio=lambda: INVERNO), *strumenti],
+                            max_passi=3, max_messaggi_contesto=20, fuso_predefinito="Europe/Rome")
+
+
+def test_log_origine_mcp_ed_esito_errore(caplog):
+    errore = "Errore dallo strumento meteo_attuale: città non trovata: X"
+    modello = ModelloFinto([_ai_tool([("meteo_attuale", {"citta": "X"}, "m1")]), AIMessage("Boh")])
+    with caplog.at_level(logging.INFO):
+        stato = _esegui(_grafo_con(modello, _meteo_finto(errore)))
+    assert any(all(parte in r.getMessage() for parte in
+                   ("origine=mcp:meteo", "call_id=m1", "esito=errore", "strumento=meteo_attuale"))
+               for r in caplog.records)
+    assert _tool_messages(stato)[0].tool_call_id == "m1"
+    assert _tool_messages(stato)[0].content == errore
+
+
+def test_tool_mcp_insieme_all_orologio():
+    modello = ModelloFinto([
+        _ai_tool([("ora_corrente", {}, "o1"), ("meteo_attuale", {"citta": "Udine"}, "m1")]),
+        AIMessage("Ecco"),
+    ])
+    stato = _esegui(_grafo_con(modello, _meteo_finto("Udine: 10 gradi")))
+    per_id = {m.tool_call_id: m.content for m in _tool_messages(stato)}
+    assert set(per_id) == {"o1", "m1"}
+    assert per_id["m1"] == "Udine: 10 gradi"
+    assert "Europe/Rome" in per_id["o1"]
+
+
+def test_prompt_cita_meteo_ed_errori():
+    assert "meteo_attuale" in PROMPT_SISTEMA and "previsioni_meteo" in PROMPT_SISTEMA
+    assert "errore" in PROMPT_SISTEMA.lower()
 
 
 def test_prompt_e_finestra_al_modello():

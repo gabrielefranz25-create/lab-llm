@@ -3,6 +3,7 @@
 I print didattici "[passo]" sono commentati: togliere il commento per seguire il flusso.
 """
 
+import json
 import logging
 from typing import Annotated, Literal, TypedDict
 
@@ -22,7 +23,10 @@ PROMPT_SISTEMA = (
     "Per qualsiasi domanda su data, ora o giorno attuali usa SEMPRE lo strumento `ora_corrente`: "
     "non inventare l'ora. Se l'utente non indica un luogo usa il fuso predefinito {fuso} "
     "(ora italiana). Per altri luoghi passa il nome IANA del fuso (es. \"Asia/Tokyo\").\n"
-    "Nella risposta indica sempre a quale fuso orario si riferisce l'ora."
+    "Nella risposta indica sempre a quale fuso orario si riferisce l'ora.\n"
+    "Per il meteo di adesso usa lo strumento `meteo_attuale` e per le previsioni "
+    "`previsioni_meteo`: non inventare dati meteorologici e cita la località indicata nel risultato.\n"
+    "Se uno strumento restituisce un errore, riferiscilo all'utente senza inventare un risultato."
 )
 
 MESSAGGIO_LIMITE = (
@@ -191,7 +195,11 @@ def costruisci_grafo(modello: Runnable, strumenti: list[BaseTool], *, max_passi:
                     testo = str(strumento.invoke(tc["args"]))
                 except Exception as errore:  # argomenti sbagliati del modello: diventano testo
                     testo = f"Errore: argomenti non validi per {tc['name']}: {errore}"
-            logger.info("strumento %s %s -> %s", tc["name"], tc["args"], testo.replace("\n", " | "))
+            origine = (strumento.metadata or {}).get("origine", "locale") if strumento else "-"
+            argomenti = tc["args"] if isinstance(tc["args"], str) else json.dumps(tc["args"], ensure_ascii=False)
+            logger.info("strumento=%s origine=%s call_id=%s argomenti=%s esito=%s risultato=%s",
+                        tc["name"], origine, tc["id"], argomenti,
+                        "errore" if testo.startswith("Errore") else "ok", testo.replace("\n", " | "))
             risultati.append(ToolMessage(content=testo, tool_call_id=tc["id"]))
         return {"messages": risultati, "passi_strumento": stato["passi_strumento"] + 1}
 
