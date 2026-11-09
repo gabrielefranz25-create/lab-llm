@@ -2,9 +2,12 @@
 
 import logging
 import os
+import sys
 from dataclasses import dataclass
 
 import httpx
+from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 
 logger = logging.getLogger(__name__)
 
@@ -188,3 +191,31 @@ def testo_previsioni(client: httpx.Client, citta: str, giorni: int) -> str:
         raise _errore("risposta del servizio meteo non valida") from errore
     logger.info("previsioni a %d giorni per %s", giorni, scelta.descrizione())
     return "\n".join(righe)
+
+
+mcp = FastMCP("Meteo")
+
+
+@mcp.tool
+def meteo_attuale(citta: str) -> str:
+    """Condizioni meteo di adesso (temperatura, umidità, vento, cielo) per una città."""
+    try:
+        with crea_client() as client:
+            return testo_meteo_attuale(client, citta)
+    except ErroreMeteo as errore:
+        raise ToolError(str(errore)) from errore
+
+
+@mcp.tool
+def previsioni_meteo(citta: str, giorni: int = 3) -> str:
+    """Previsioni giorno per giorno per una città, da 1 a 7 giorni (minime, massime, pioggia)."""
+    try:
+        with crea_client() as client:
+            return testo_previsioni(client, citta, giorni)
+    except ErroreMeteo as errore:
+        raise ToolError(str(errore)) from errore
+
+
+if __name__ == "__main__":
+    logging.basicConfig(stream=sys.stderr, level=logging.INFO)
+    mcp.run(show_banner=False)

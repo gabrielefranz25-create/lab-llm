@@ -1,7 +1,11 @@
 """Test della logica meteo con httpx.MockTransport: nessuna richiesta di rete."""
 
+import asyncio
+
 import httpx
 import pytest
+from fastmcp import Client
+from fastmcp.exceptions import ToolError
 
 from server_mcp import meteo
 from server_mcp.meteo import ErroreMeteo, Localita, cerca_localita, descrivi_codice
@@ -146,3 +150,38 @@ def test_previsioni_con_valori_nulli():
     righe = [r for r in meteo.testo_previsioni(client, "Udine", 3).splitlines() if r.startswith("2026-")]
     assert "pioggia n.d." in righe[0]
     assert "pioggia 40 %" in righe[1]
+
+
+# --- Involucro FastMCP (in memoria, senza rete) ---
+
+def _con_client_mcp(operazione):
+    """Esegue `operazione(client)` su un client FastMCP collegato in memoria al server meteo."""
+    async def _esegui():
+        async with Client(meteo.mcp) as client_mcp:
+            return await operazione(client_mcp)
+    return asyncio.run(_esegui())
+
+
+def test_catalogo_meteo():
+    async def operazione(c):
+        return await c.list_tools()
+    strumenti = {s.name: s for s in _con_client_mcp(operazione)}
+    assert set(strumenti) == {"meteo_attuale", "previsioni_meteo"}
+    schema = strumenti["previsioni_meteo"].input_schema
+    assert {"citta", "giorni"} <= set(schema["properties"])
+    assert schema["required"] == ["citta"]
+    descrizioni = [s.description for s in strumenti.values()]
+    assert all(descrizioni) and descrizioni[0] != descrizioni[1]
+
+
+def test_errore_diventa_iserror():
+    async def operazione(c):
+        return await c.call_tool("meteo_attuale", {"citta": " "}, raise_on_error=False)
+    risultato = _con_client_mcp(operazione)
+    assert risultato.is_error
+    assert "città" in risultato.content[0].text
+
+    async def con_eccezione(c):
+        return await c.call_tool("meteo_attuale", {"citta": " "})
+    with pytest.raises(ToolError, match="città"):
+        _con_client_mcp(con_eccezione)
