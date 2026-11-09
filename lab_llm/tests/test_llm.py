@@ -5,9 +5,10 @@ from types import SimpleNamespace
 import httpx
 import openai
 import pytest
+from langchain_openai import ChatOpenAI
 
 from agente.config import carica_config
-from agente.llm import ErroreModello, crea_modello, verifica_modello
+from agente.llm import ErroreModello, crea_modello, crea_riassuntore, verifica_modello
 from agente.strumenti import crea_ora_corrente
 
 URL = "http://localhost:1234/v1"
@@ -59,3 +60,11 @@ def test_crea_modello_parametri():
     assert modello.bound.temperature == 0
     assert modello.bound.openai_api_base == URL
     assert modello.kwargs["tools"][0]["function"]["name"] == "ora_corrente"
+
+
+def test_crea_riassuntore_senza_strumenti():
+    riassuntore = crea_riassuntore(_config())
+    assert isinstance(riassuntore, ChatOpenAI)  # nessun bind_tools: niente kwargs["tools"]
+    assert riassuntore.model_name == "m"
+    assert riassuntore.temperature == 0
+    assert riassuntore.openai_api_base == URL

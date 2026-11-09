@@ -20,9 +20,9 @@ class ErroreModello(Exception):
     """LM Studio non raggiungibile, oppure modello non disponibile sul server."""
 
 
-def crea_modello(config: Config, strumenti: list[BaseTool]) -> Runnable:
-    """ChatOpenAI verso LM Studio, con gli strumenti già collegati (bind_tools)."""
-    modello = ChatOpenAI(
+def _chat(config: Config) -> ChatOpenAI:
+    """ChatOpenAI verso LM Studio, senza strumenti."""
+    return ChatOpenAI(
         base_url=config.lm_base_url,
         model=config.lm_model,
         api_key=CHIAVE_FITTIZIA,
@@ -30,7 +30,16 @@ def crea_modello(config: Config, strumenti: list[BaseTool]) -> Runnable:
         timeout=config.lm_timeout,
         max_retries=1,
     )
-    return modello.bind_tools(strumenti)
+
+
+def crea_modello(config: Config, strumenti: list[BaseTool]) -> Runnable:
+    """ChatOpenAI verso LM Studio, con gli strumenti già collegati (bind_tools)."""
+    return _chat(config).bind_tools(strumenti)
+
+
+def crea_riassuntore(config: Config) -> Runnable:
+    """Stesso modello senza strumenti: per il riassunto della cronologia non deve chiamarne."""
+    return _chat(config)
 
 
 def elenca_modelli(config: Config, client: OpenAI | None = None) -> list[str]:
