@@ -1,4 +1,4 @@
-"""Grafo LangGraph dell'assistente: stato, compattazione, finestra di contesto, instradamento, nodi.
+"""Grafo LangGraph dell'assistente: stato, compattazione, router, finestra di contesto, instradamento, nodi.
 
 I print didattici "[passo]" sono commentati: togliere il commento per seguire il flusso.
 """
@@ -15,6 +15,7 @@ from langchain_core.tools import BaseTool
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import REMOVE_ALL_MESSAGES, add_messages
 from langgraph.graph.state import CompiledStateGraph
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,19 @@ PROMPT_RIASSUNTO = (
     "fatti riguardano la persona con cui sta parlando. Scrivi solo il riassunto, senza commenti."
 )
 
+PROMPT_ROUTER = (
+    "Sei il router dell'assistente del laboratorio. Non rispondi all'utente: decidi solo se la sua "
+    "ultima domanda rientra nell'ambito dell'assistente.\n"
+    "Ambito: {ambito}.\n"
+    "Rispondi con la categoria \"conversazione\" se la domanda rientra nell'ambito (anche come seguito "
+    "della conversazione recente), altrimenti con \"fuori_ambito\". Aggiungi un motivo breve, in italiano."
+)
+
+MESSAGGIO_RIFIUTO = "Mi dispiace, posso aiutarti solo con: {ambito}."
+
+# Messaggi della cronologia (domanda compresa) che il router legge per decidere.
+MESSAGGI_ROUTER = 4
+
 # Nome del SystemMessage che, in testa alla cronologia, contiene il riassunto dei messaggi vecchi.
 NOME_RIASSUNTO = "riassunto"
 INTESTAZIONE_RIASSUNTO = (
@@ -53,11 +67,20 @@ INTESTAZIONE_RIASSUNTO = (
 )
 
 
+class DecisioneRouter(BaseModel):
+    """Output strutturato del router."""
+    categoria: Literal["conversazione", "fuori_ambito"] = Field(
+        description="conversazione se la domanda rientra nell'ambito, altrimenti fuori_ambito")
+    motivo: str = Field(description="motivo breve della scelta, in italiano")
+
+
 class AgentState(TypedDict):
     # Cronologia (Human/AI/Tool): add_messages accoda i messaggi nuovi restituiti dai nodi.
     messages: Annotated[list[AnyMessage], add_messages]
     # Giri di strumento nel turno corrente: senza reducer, il valore restituito sostituisce il vecchio.
     passi_strumento: int
+    # Decisione del router per il turno corrente: "conversazione" o "fuori_ambito".
+    categoria: str
 
 
 def finestra_contesto(messaggi: list[AnyMessage], n: int) -> list[AnyMessage]:
@@ -108,6 +131,11 @@ def trascrivi(messaggi: list[AnyMessage]) -> str:
     return "\n".join(righe)
 
 
+def instrada_dopo_router(stato: AgentState) -> Literal["llm", "rifiuto"]:
+    """Dopo il router: conversazione all'agente (nodo llm), fuori ambito al rifiuto."""
+    return "rifiuto" if stato["categoria"] == "fuori_ambito" else "llm"
+
+
 def instrada_dopo_llm(stato: AgentState, max_passi: int) -> Literal["strumenti", "limite", "__end__"]:
     """Dopo il nodo llm: fine se non ci sono tool_call, altrimenti strumenti o limite."""
     if not _richieste(stato["messages"][-1]):
@@ -138,13 +166,16 @@ def limite_ricorsione(max_passi: int) -> int:
 def costruisci_grafo(modello: Runnable, strumenti: list[BaseTool], *, max_passi: int,
                      max_messaggi_contesto: int, fuso_predefinito: str,
                      riassuntore: Runnable | None = None,
-                     messaggi_da_tenere: int = 6) -> CompiledStateGraph:
-    """Grafo compatta -> llm -> strumenti -> llm, con il nodo limite.
+                     messaggi_da_tenere: int = 6, router: Runnable | None = None,
+                     ambito: str = "") -> CompiledStateGraph:
+    """Grafo compatta -> router -> (llm -> strumenti -> llm | rifiuto), con il nodo limite.
 
-    Il modello ha già gli strumenti collegati; il riassuntore no. Senza riassuntore il nodo
-    compatta non fa nulla e il contesto è controllato solo dalla finestra scorrevole.
+    Il modello ha già gli strumenti collegati; riassuntore e router no. Senza riassuntore il nodo
+    compatta non fa nulla e il contesto è controllato solo dalla finestra scorrevole. Senza router
+    ogni domanda passa all'agente. Il router restituisce un DecisioneRouter.
     """
     prompt = PROMPT_SISTEMA.format(fuso=fuso_predefinito)
+    prompt_router = PROMPT_ROUTER.format(ambito=ambito)
     per_nome = {s.name: s for s in strumenti}
 
     def nodo_compatta(stato: AgentState) -> dict:
@@ -170,6 +201,31 @@ def costruisci_grafo(modello: Runnable, strumenti: list[BaseTool], *, max_passi:
         # REMOVE_ALL_MESSAGES svuota la cronologia: add_messages poi accoda riassunto e recenti.
         return {"messages": [RemoveMessage(id=REMOVE_ALL_MESSAGES), riassunto] + recenti}
 
+    def nodo_router(stato: AgentState) -> dict:
+        if router is None:
+            return {"categoria": "conversazione"}
+        *precedenti, domanda = stato["messages"][-MESSAGGI_ROUTER:]
+        testo = f"Domanda da classificare: {domanda.content}"
+        if precedenti:
+            testo = f"Conversazione recente:\n{trascrivi(precedenti)}\n\n{testo}"
+        # print("[passo] nodo router: chiedo al modello se la domanda rientra nell'ambito")
+        try:
+            decisione = router.invoke([SystemMessage(prompt_router), HumanMessage(testo)])
+        except (openai.APIError, ValueError) as errore:  # ValueError: output non valido per lo schema
+            logger.warning("router non riuscito, domanda passata all'agente: %s", errore)
+            return {"categoria": "conversazione"}
+        if not isinstance(decisione, DecisioneRouter):
+            logger.warning("router non riuscito, domanda passata all'agente: output %r", decisione)
+            return {"categoria": "conversazione"}
+        destinazione = "rifiuto" if decisione.categoria == "fuori_ambito" else "agente"
+        logger.info("router: categoria=%s motivo=%s -> %s", decisione.categoria,
+                    decisione.motivo.replace("\n", " "), destinazione)
+        return {"categoria": decisione.categoria}
+
+    def nodo_rifiuto(stato: AgentState) -> dict:
+        # print("[passo] nodo rifiuto: domanda fuori ambito, l'agente non viene chiamato")
+        return {"messages": [AIMessage(MESSAGGIO_RIFIUTO.format(ambito=ambito))]}
+
     def nodo_llm(stato: AgentState) -> dict:
         # print("[passo] nodo llm: chiedo al modello la prossima mossa")
         messaggi = stato["messages"]
@@ -180,6 +236,7 @@ def costruisci_grafo(modello: Runnable, strumenti: list[BaseTool], *, max_passi:
             messaggi = messaggi[1:]
         da_inviare = [SystemMessage(sistema)] + finestra_contesto(messaggi, max_messaggi_contesto)
         # print(f"[passo] nodo llm: invio {len(da_inviare)} messaggi al modello (prompt di sistema compreso)")
+        logger.info("agente: invio %d messaggi al modello", len(da_inviare))
         return {"messages": [modello.invoke(da_inviare)]}
 
     def nodo_strumenti(stato: AgentState) -> dict:
@@ -219,11 +276,15 @@ def costruisci_grafo(modello: Runnable, strumenti: list[BaseTool], *, max_passi:
 
     grafo = StateGraph(AgentState)
     grafo.add_node("compatta", nodo_compatta)
+    grafo.add_node("router", nodo_router)
+    grafo.add_node("rifiuto", nodo_rifiuto)
     grafo.add_node("llm", nodo_llm)
     grafo.add_node("strumenti", nodo_strumenti)
     grafo.add_node("limite", nodo_limite)
     grafo.add_edge(START, "compatta")
-    grafo.add_edge("compatta", "llm")
+    grafo.add_edge("compatta", "router")
+    grafo.add_conditional_edges("router", instrada_dopo_router, {"llm": "llm", "rifiuto": "rifiuto"})
+    grafo.add_edge("rifiuto", END)
     grafo.add_conditional_edges(
         "llm", lambda stato: instrada_dopo_llm(stato, max_passi),
         {"strumenti": "strumenti", "limite": "limite", END: END},
