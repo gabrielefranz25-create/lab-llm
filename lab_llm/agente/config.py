@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from dotenv import load_dotenv
 
 LIVELLI_LOG = ("DEBUG", "INFO", "WARNING", "ERROR")
+SERVER_MCP_NOTI = ("meteo",)
 
 
 class ErroreConfigurazione(Exception):
@@ -24,6 +25,10 @@ class Config:
     messaggi_da_tenere: int
     lm_timeout: float
     log_level: str
+    mcp_timeout: float
+    meteo_timeout: float
+    note_db: str
+    server_mcp: tuple[str, ...]
 
 
 def _leggi(ambiente: Mapping[str, str], nome: str, default: str | None = None) -> str:
@@ -78,6 +83,21 @@ def _livello_log(ambiente: Mapping[str, str], nome: str, default: str) -> str:
     return testo
 
 
+def _elenco_server(ambiente: Mapping[str, str]) -> tuple[str, ...]:
+    """Legge SERVER_MCP: assente = tutti i server noti, vuota = nessun server."""
+    grezzo = ambiente.get("SERVER_MCP")  # non _leggi: la stringa vuota è un valore valido
+    if grezzo is None:
+        return SERVER_MCP_NOTI
+    nomi = tuple(dict.fromkeys(n.strip() for n in grezzo.split(",") if n.strip()))
+    sconosciuti = [n for n in nomi if n not in SERVER_MCP_NOTI]
+    if sconosciuti:
+        raise ErroreConfigurazione(
+            f"SERVER_MCP contiene server sconosciuti: {', '.join(sconosciuti)}. "
+            f"Server noti: {', '.join(SERVER_MCP_NOTI)}."
+        )
+    return nomi
+
+
 def carica_config(ambiente: Mapping[str, str] | None = None) -> Config:
     """Costruisce la Config. Senza argomenti carica .env (senza sovrascrivere) e legge os.environ."""
     if ambiente is None:
@@ -89,6 +109,12 @@ def carica_config(ambiente: Mapping[str, str] | None = None) -> Config:
         raise ErroreConfigurazione(
             f"MESSAGGI_DA_TENERE ({da_tenere}) deve essere minore di MAX_MESSAGGI_CONTESTO ({max_messaggi})."
         )
+    mcp_timeout = _secondi(ambiente, "MCP_TIMEOUT", 30.0)
+    meteo_timeout = _secondi(ambiente, "METEO_TIMEOUT", 10.0)
+    if mcp_timeout <= 2 * meteo_timeout:  # il server meteo fa due chiamate HTTP in sequenza
+        raise ErroreConfigurazione(
+            f"MCP_TIMEOUT ({mcp_timeout:g}) deve essere maggiore del doppio di METEO_TIMEOUT ({meteo_timeout:g})."
+        )
     return Config(
         lm_base_url=_leggi(ambiente, "LM_BASE_URL"),
         lm_model=_leggi(ambiente, "LM_MODEL"),
@@ -98,4 +124,8 @@ def carica_config(ambiente: Mapping[str, str] | None = None) -> Config:
         messaggi_da_tenere=da_tenere,
         lm_timeout=_secondi(ambiente, "LM_TIMEOUT", 60.0),
         log_level=_livello_log(ambiente, "LOG_LEVEL", "INFO"),
+        mcp_timeout=mcp_timeout,
+        meteo_timeout=meteo_timeout,
+        note_db=_leggi(ambiente, "NOTE_DB", "dati/note.sqlite3"),
+        server_mcp=_elenco_server(ambiente),
     )

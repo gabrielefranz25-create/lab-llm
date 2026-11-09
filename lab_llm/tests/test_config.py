@@ -62,3 +62,32 @@ def test_valori_personalizzati():
 def test_valori_non_validi(nome, valore):
     with pytest.raises(ErroreConfigurazione, match=nome):
         carica_config({**MINIMO, nome: valore})
+
+
+def test_valori_predefiniti_mcp():
+    config = carica_config(MINIMO)
+    assert config.mcp_timeout == 30.0
+    assert config.meteo_timeout == 10.0
+    assert config.note_db == "dati/note.sqlite3"
+    assert config.server_mcp == ("meteo",)
+
+
+def test_server_mcp_vuoto_non_avvia_nulla():
+    assert carica_config({**MINIMO, "SERVER_MCP": ""}).server_mcp == ()
+
+
+def test_server_mcp_elenco():
+    config = carica_config({**MINIMO, "SERVER_MCP": " meteo , meteo "})
+    assert config.server_mcp == ("meteo",)
+
+
+def test_server_mcp_sconosciuto():
+    with pytest.raises(ErroreConfigurazione, match="posta"):
+        carica_config({**MINIMO, "SERVER_MCP": "meteo,posta"})
+
+
+def test_timeout_mcp_troppo_basso():
+    with pytest.raises(ErroreConfigurazione, match="MCP_TIMEOUT"):
+        carica_config({**MINIMO, "MCP_TIMEOUT": "15", "METEO_TIMEOUT": "10"})
+    config = carica_config({**MINIMO, "MCP_TIMEOUT": "21", "METEO_TIMEOUT": "10"})
+    assert config.mcp_timeout == 21.0
