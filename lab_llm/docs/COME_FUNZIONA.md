@@ -21,14 +21,17 @@
 1. Il client legge la domanda (`Tu> ...`) e invoca il grafo con la cronologia più la nuova domanda.
 2. Il nodo `compatta` controlla la lunghezza della cronologia: oltre `MAX_MESSAGGI_CONTESTO` messaggi
    fa riassumere al modello quelli vecchi e tiene solo il riassunto più gli ultimi `MESSAGGI_DA_TENERE`.
-3. Il nodo `llm` manda al modello il prompt di sistema (con l'eventuale riassunto) e gli ultimi
+3. Il nodo `router` chiede al modello (senza strumenti, con output strutturato) se la domanda rientra
+   nell'ambito `AMBITO_AGENTE`. Se è `fuori_ambito`, il nodo `rifiuto` aggiunge un messaggio fisso e il
+   turno finisce senza passare dall'agente; se è `conversazione` si prosegue.
+4. Il nodo `llm` manda al modello il prompt di sistema (con l'eventuale riassunto) e gli ultimi
    messaggi della cronologia.
-4. Se il modello risponde con del testo, il turno finisce e il client stampa `Assistente> ...`.
-5. Se il modello chiede uno strumento (una *tool_call*), il nodo `strumenti` lo esegue e aggiunge il
+5. Se il modello risponde con del testo, il turno finisce e il client stampa `Assistente> ...`.
+6. Se il modello chiede uno strumento (una *tool_call*), il nodo `strumenti` lo esegue e aggiunge il
    risultato alla cronologia; poi si torna al nodo `llm`, che ora vede l'ora vera e risponde.
-6. Se il modello continua a chiedere strumenti oltre `MAX_PASSI_STRUMENTO` volte, il nodo `limite`
+7. Se il modello continua a chiedere strumenti oltre `MAX_PASSI_STRUMENTO` volte, il nodo `limite`
    chiude il turno con un messaggio di scuse.
-7. Il client salva la cronologia restituita dal grafo (già compattata) e ripropone il prompt.
+8. Il client salva la cronologia restituita dal grafo (già compattata) e ripropone il prompt.
 
 ## Moduli
 
@@ -51,11 +54,12 @@ main.py ──► config.py        variabili d'ambiente → Config (errori chiar
 ## Schema del grafo
 
 ```
-                      ┌────────────────────────────────────────────┐
-                      ▼                                            │
-START ─► compatta ─► llm ─► instrada_dopo_llm ─┬─ nessuna tool_call ──────────► END
-                                               ├─ tool_call e passi < MAX ─► strumenti
-                                               └─ tool_call e passi ≥ MAX ─► limite ─► END
+                                                   ┌────────────────────────────────────────────┐
+                                                   ▼                                            │
+START ─► compatta ─► router ─► instrada_dopo_router ─► llm ─► instrada_dopo_llm ─┬─ nessuna tool_call ──────────► END
+                                    │ (conversazione)                            ├─ tool_call e passi < MAX ─► strumenti
+                                    │                                            └─ tool_call e passi ≥ MAX ─► limite ─► END
+                                    └─ fuori_ambito ─► rifiuto ─► END
 ```
 
 Lo stesso grafo in Mermaid, generato dal codice con `get_graph().draw_mermaid()` (le frecce
@@ -70,17 +74,22 @@ config:
 graph TD;
 	__start__([<p>__start__</p>]):::first
 	compatta(compatta)
+	router(router)
+	rifiuto(rifiuto)
 	llm(llm)
 	strumenti(strumenti)
 	limite(limite)
 	__end__([<p>__end__</p>]):::last
 	__start__ --> compatta;
-	compatta --> llm;
+	compatta --> router;
 	llm -.-> __end__;
 	llm -.-> limite;
 	llm -.-> strumenti;
+	router -.-> llm;
+	router -.-> rifiuto;
 	strumenti --> llm;
 	limite --> __end__;
+	rifiuto --> __end__;
 	classDef default fill:#f2f0ff,line-height:1.2
 	classDef first fill-opacity:0
 	classDef last fill:#bfb6fc
@@ -89,7 +98,7 @@ graph TD;
 Per rigenerarlo (con una lambda al posto del modello: per disegnare il grafo non serve LM Studio):
 
 ```powershell
-python -c "from langchain_core.runnables import RunnableLambda; from agente.graph import costruisci_grafo; from agente.strumenti import crea_ora_corrente; g = costruisci_grafo(RunnableLambda(lambda m: m), [crea_ora_corrente()], max_passi=3, max_messaggi_contesto=20, fuso_predefinito='Europe/Rome', riassuntore=RunnableLambda(lambda m: m)); print(g.get_graph().draw_mermaid())"
+python -c "from langchain_core.runnables import RunnableLambda; from agente.graph import costruisci_grafo; from agente.strumenti import crea_ora_corrente; g = costruisci_grafo(RunnableLambda(lambda m: m), [crea_ora_corrente()], max_passi=3, max_messaggi_contesto=20, fuso_predefinito='Europe/Rome', riassuntore=RunnableLambda(lambda m: m), router=RunnableLambda(lambda m: m), ambito='x'); print(g.get_graph().draw_mermaid())"
 ```
 
 ## Stato
@@ -98,12 +107,14 @@ python -c "from langchain_core.runnables import RunnableLambda; from agente.grap
 class AgentState(TypedDict):
     messages: Annotated[list[AnyMessage], add_messages]  # cronologia (Human/AI/Tool)
     passi_strumento: int                                   # giri di strumento nel turno corrente
+    categoria: str                                         # decisione del router per il turno corrente
 ```
 
 - `messages` usa il reducer `add_messages`: ogni nodo restituisce solo i messaggi **nuovi**, che
   vengono accodati.
 - `passi_strumento` non ha reducer: il valore restituito sostituisce il precedente. Il client lo
   riparte da 0 a ogni domanda.
+- `categoria` non ha reducer: la scrive il nodo `router` a ogni turno (`conversazione` o `fuori_ambito`).
 - Il prompt di sistema **non** sta nello stato: il nodo `llm` lo mette in testa a ogni chiamata.
 
 ## Nodi e instradamento
@@ -111,12 +122,16 @@ class AgentState(TypedDict):
 | Nodo | Che cosa fa | Restituisce |
 |---|---|---|
 | `compatta` | se i messaggi sono più di `MAX_MESSAGGI_CONTESTO`, li divide in vecchi e recenti (`dividi_cronologia`, taglio su un `HumanMessage`), manda i vecchi come testo (`trascrivi`) al riassuntore senza strumenti e sostituisce la cronologia; log INFO | `{}` oppure `{"messages": [RemoveMessage(REMOVE_ALL_MESSAGES), riassunto, *recenti]}` |
+| `router` | manda al router (stesso modello senza strumenti, `with_structured_output(DecisioneRouter)`) il prompt con l'ambito e la trascrizione degli ultimi 4 messaggi; log INFO con categoria, motivo e destinazione; errore o output non valido → WARNING e `conversazione`; senza router sempre `conversazione` | `{"categoria": "conversazione" \| "fuori_ambito"}` |
+| `rifiuto` | aggiunge «Mi dispiace, posso aiutarti solo con: {ambito}.» senza chiamare il modello | `{"messages": [AIMessage]}` |
 | `llm` | invia `[prompt di sistema + riassunto] + finestra_contesto(messages)` al modello, che ha già lo strumento collegato (`bind_tools`) | `{"messages": [AIMessage]}` |
 | `strumenti` | esegue **ogni** tool_call dell'ultimo messaggio; scrive un log INFO per ciascuna; uno strumento sconosciuto, argomenti sbagliati o argomenti che non sono JSON valido (le `invalid_tool_calls` di LangChain) diventano un testo d'errore, non un'eccezione | `{"messages": [ToolMessage, ...], "passi_strumento": passi + 1}` |
 | `limite` | risponde «Non eseguito» a ogni tool_call rimasta in sospeso (altrimenti la cronologia non sarebbe valida per l'API) e aggiunge il messaggio per l'utente; log WARNING | `{"messages": [ToolMessage, ..., AIMessage]}` |
 
 Le tool_call con argomenti non JSON contano come tool_call: l'API le rimanda al modello, quindi
 devono ricevere anch'esse un `ToolMessage`, altrimenti la cronologia non sarebbe più valida.
+
+`instrada_dopo_router(stato)`: `fuori_ambito` → `rifiuto`, altrimenti → `llm`.
 
 `instrada_dopo_llm(stato, max_passi)` è una funzione pura: nessuna tool_call → `END`; tool_call con
 `passi_strumento < max_passi` → `strumenti`; altrimenti → `limite`.
@@ -289,6 +304,9 @@ stampata.
 | Evento | Livello | Esempio |
 |---|---|---|
 | avvio | INFO | `avvio: modello=google/gemma-4-e2b server=http://localhost:1234/v1 max_passi=3 contesto=20 da_tenere=6` |
+| decisione del router | INFO | `router: categoria=fuori_ambito motivo=La domanda non riguarda data, ora, meteo o note personali. -> rifiuto` |
+| agente eseguito (assente se la domanda è rifiutata) | INFO | `agente: invio 2 messaggi al modello` |
+| router non riuscito | WARNING | `router non riuscito, domanda passata all'agente: Connection error.` |
 | cronologia compattata | INFO | `compattati 16 messaggi, tenuti 5` |
 | riassunto non riuscito | WARNING | `riassunto non riuscito, cronologia lasciata intera: Connection error.` |
 | chiamata a uno strumento | INFO | `strumento=ora_corrente origine=locale call_id=... argomenti={"fuso_orario": "Asia/Tokyo"} esito=ok risultato=Fuso orario: Asia/Tokyo ...` |

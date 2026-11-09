@@ -92,12 +92,25 @@ Spunta le caselle - [x] nel piano man mano.
 8. Chiusura: merge `dev → main` e tag `lezione-5`.
 9. Creati `docs/GRAFO_E_STRUMENTI.md` e questo file, da aggiornare a ogni modifica.
 
-### Lezione 6: evolvere l'agente. Da fare
+### Lezione 6: evolvere l'agente. In corso
 Materiale: `materiali/LLM_Lez_6.pdf`. Uno step alla volta, ciascuno con spec, piano, test, prova reale, README e commit.
+
+#### Step 1 (9/11): router. Branch `feat/router`
+- Prompt: quello dello step 1 in `docs/PROSSIMA_SESSIONE.md` (prompt di partenza del PDF con i requisiti del router).
+- Skill e modalità: `superpowers:brainstorming` per le decisioni (ambito stretto, router che legge gli ultimi 4 messaggi, rifiuto fisso, router in errore → agente); **plan mode** per la proposta, approvata con ExitPlanMode; poi modalità auto, un task alla volta con TDD (test prima, poi codice) e un commit per task.
+- Specifica `specs/2026-11-09-router-design.md` e piano `plans/2026-11-09-router.md`.
+1. `docs`: specifica e piano.
+2. `feat(config)`: `AMBITO_AGENTE` con ambito predefinito stretto (ora, meteo, note, saluti).
+3. `feat(grafo)`: `DecisioneRouter` (categoria, motivo), nodi `router` e `rifiuto`, arco condizionale `instrada_dopo_router`, campo `categoria` nello stato, log `agente: invio …` nel nodo `llm`.
+4. `feat(main)`: `crea_router` (stesso modello, `with_structured_output`, nessuno strumento) collegato al grafo.
+5. `test(reale)`: `tests/reale/test_router_reale.py`.
+6. `docs`: questo file, `GRAFO_E_STRUMENTI.md`, README.
+- Esiti: `python -m pytest` → 132 passati, 12 skipped. Prove reali del router → 2 passate; suite reale completa (`-m reale`) → 12 passate. Prova a mano: «Che tempo fa a Roma?» e il seguito «e domani?» vanno all'agente; «Chi era Garibaldi?» → `fuori_ambito`, rifiuto, nessuna riga `agente: invio`.
+- Test simulati (router finto) e prove reali sono separati: i primi dimostrano il cablaggio del grafo, le seconde che gemma-4-e2b classifica davvero.
 
 | Step | Cosa | Evidenza minima | Stato |
 |---|---|---|---|
-| 1 | Router: in ambito o fuori ambito | domanda fuori ambito rifiutata senza passare dall'agente | da fare |
+| 1 | Router: in ambito o fuori ambito | domanda fuori ambito rifiutata senza passare dall'agente | fatto (`feat/router`) |
 | 2 | Revisore: risposta coerente | risposta incompleta corretta entro il limite | da fare |
 | 3 | Riassunto della cronologia | info del primo turno usata dopo la compressione | in parte (nodo `compatta`) |
 | 4 | Resource MCP `utente://preferenze` | preferenze applicate; si cambia il file, non il codice | da fare |

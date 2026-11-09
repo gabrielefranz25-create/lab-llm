@@ -12,6 +12,11 @@ sottoprocessi, che l'agente scopre da sé leggendone il catalogo. Il server `met
 `aggiungi_nota`, `elenca_note` ed `elimina_nota` e salva le note in un file SQLite, quindi **le note
 restano** anche dopo la chiusura del programma (la cronologia della chat no).
 
+Dalla lezione 6 (step 1) un nodo **router** decide, prima dell'agente, se la domanda rientra
+nell'ambito dichiarato in `AMBITO_AGENTE`. Le domande fuori ambito ricevono un rifiuto fisso e
+l'agente non viene eseguito. Nel log compaiono `router: categoria=… motivo=… -> agente|rifiuto` e,
+solo se l'agente viene eseguito, `agente: invio N messaggi al modello`.
+
 Come funziona dentro (grafo, stato, nodi, strumenti, ponte MCP, log): [docs/COME_FUNZIONA.md](docs/COME_FUNZIONA.md).
 Docker su Windows e risoluzione dei problemi: [docs/GUIDA_DOCKER.md](docs/GUIDA_DOCKER.md).
 
@@ -63,6 +68,7 @@ Invoke-RestMethod http://localhost:1234/v1/models | Select-Object -ExpandPropert
 | `METEO_TIMEOUT` | no | `10` | secondi di attesa per ogni richiesta HTTP del server meteo (ne fa due in sequenza: geocoding e previsioni) |
 | `NOTE_DB` | no | `dati/note.sqlite3` | file SQLite delle note; in Docker sta nel volume `note` (vedi sotto); un percorso relativo parte dalla cartella `lab_llm/` (directory di lavoro dei server, `CARTELLA_PROGETTO` in `agente/mcp_ponte.py`), non da quella della shell |
 | `SERVER_MCP` | no | `meteo,note` | server MCP da avviare, separati da virgole; se la variabile è presente ma vuota non parte nessun server; un nome sconosciuto dà un errore di configurazione |
+| `AMBITO_AGENTE` | no | ora, meteo, note, saluti | ambito dell'agente in linguaggio naturale, letto dal router; il testo predefinito è `AMBITO_PREDEFINITO` in `agente/config.py`; compare anche nel messaggio di rifiuto |
 | `PROVA_REALE` | no | — | solo per i test con LM Studio vero (vedi sotto) |
 
 `.env` resta fuori da Git; `.env.example` non contiene credenziali (LM Studio non usa chiavi).
@@ -118,7 +124,7 @@ docker compose run --rm assistente
 python -m pytest
 ```
 
-Esito del 2026-11-09: `122 passed, 10 skipped` (le 10 prove reali risultano `skipped` senza `PROVA_REALE`). I test non richiedono
+Esito del 2026-11-09: `132 passed, 12 skipped` (le 12 prove reali risultano `skipped` senza `PROVA_REALE`). I test non richiedono
 LM Studio: il grafo usa un modello finto e lo strumento un istante fissato.
 
 ### Prove reali con LM Studio
@@ -145,6 +151,16 @@ Remove-Item Env:PROVA_REALE
 Esito del 2026-11-09: `6 passed`: meteo attuale a Udine, previsioni a 3 giorni a Tokyo, chiamata
 diretta con una città inesistente; nota aggiunta («Ricordami di consegnare il report venerdì»),
 «Elimina la nota 99» che dà un errore senza cancellare nulla, persistenza dopo la riapertura.
+
+Prove reali del router: una domanda in ambito («Che ore sono a Tokyo?») va all'agente, una fuori
+ambito («Scrivimi la ricetta della carbonara») viene rifiutata senza la riga `agente: invio`:
+
+```powershell
+$env:PROVA_REALE="1"; python -m pytest tests/reale/test_router_reale.py -v -o log_cli=true --log-cli-level=INFO
+Remove-Item Env:PROVA_REALE
+```
+
+Esito del 2026-11-09: `2 passed` in circa un minuto e mezzo.
 
 ## Strumenti MCP e traccia nei log
 

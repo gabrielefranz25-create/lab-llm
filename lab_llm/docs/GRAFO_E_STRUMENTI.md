@@ -4,7 +4,7 @@ Spiegazione del grafo LangGraph dell'agente e degli strumenti che usa.
 **Da aggiornare a ogni modifica del grafo, dello stato o degli strumenti.**
 Per i dettagli di funzionamento vedi anche `COME_FUNZIONA.md`.
 
-Stato al 2026-11-09: fine lezione 5 (tag `lezione-5`).
+Stato al 2026-11-09: lezione 6, step 1 (router) sul branch `feat/router`.
 
 ## 1. Il grafo di oggi
 
@@ -17,6 +17,11 @@ START
 compatta ── riassume i messaggi vecchi se la cronologia supera la soglia
   │
   ▼
+router ── decide se la domanda rientra nell'ambito (AMBITO_AGENTE)
+  │
+  ├─ fuori_ambito ─► rifiuto ──► END        l'agente non viene eseguito
+  │
+  ▼ conversazione
  llm  ◄──────────────┐   il modello (con gli strumenti collegati) decide: risposta o tool_call
   │                  │
   ├─ nessuna tool_call ───────────────► END
@@ -29,12 +34,16 @@ compatta ── riassume i messaggi vecchi se la cronologia supera la soglia
 | Nodo | Funzione | Cosa fa |
 |---|---|---|
 | `compatta` | `nodo_compatta` | Se `len(messages) > MAX_MESSAGGI_CONTESTO`, divide la cronologia (`dividi_cronologia`) in vecchi e recenti (gli ultimi `MESSAGGI_DA_TENERE`, a partire da un `HumanMessage`). Fa riassumere i vecchi al **riassuntore** (lo stesso modello senza strumenti) e li sostituisce con un `SystemMessage` di nome `riassunto`. Sotto la soglia non chiama il modello. |
-| `llm` | `nodo_llm` | Mette il prompt di sistema (più l'eventuale riassunto) in cima, prende gli ultimi messaggi con `finestra_contesto` e chiama il modello. |
+| `router` | `nodo_router` | Manda al **router** (lo stesso modello senza strumenti, con output strutturato `DecisioneRouter`: `categoria` e `motivo`) un prompt con l'ambito e la trascrizione degli ultimi 4 messaggi; l'ultimo è la domanda da classificare. Non conosce gli strumenti. Scrive `router: categoria=… motivo=… -> agente\|rifiuto` e salva la categoria nello stato. Se il router fallisce (errore di LM Studio o output non valido) scrive un warning e passa all'agente. Senza router (`router=None`) passa sempre all'agente. |
+| `rifiuto` | `nodo_rifiuto` | Aggiunge un `AIMessage` fisso: «Mi dispiace, posso aiutarti solo con: {ambito}.». Non chiama il modello. |
+| `llm` | `nodo_llm` | Mette il prompt di sistema (più l'eventuale riassunto) in cima, prende gli ultimi messaggi con `finestra_contesto` e chiama il modello. Scrive `agente: invio N messaggi al modello`: se questa riga manca, l'agente non è stato eseguito. |
 | `strumenti` | `nodo_strumenti` | Esegue ogni tool_call dell'ultimo `AIMessage` e risponde con un `ToolMessage` per ciascuna. Gli errori diventano testo per il modello. Scrive nei log `strumento=… origine=… call_id=… esito=…`. |
 | `limite` | `nodo_limite` | Chiude le tool_call rimaste in sospeso con un `ToolMessage` «Non eseguito» e aggiunge un messaggio di scuse. |
 
 ### Archi
-- `START → compatta → llm`: fissi.
+- `START → compatta → router`: fissi.
+- Dopo `router` si passa da `instrada_dopo_router`, un **arco condizionale**: verso `llm` se la categoria è `conversazione`, verso `rifiuto` se è `fuori_ambito`.
+- `rifiuto → END`.
 - Dopo `llm` si passa da `instrada_dopo_llm`, un **arco condizionale**: verso `END` se non ci sono tool_call, verso `strumenti` se `passi_strumento < MAX_PASSI_STRUMENTO`, altrimenti verso `limite`.
 - `strumenti → llm`: è il ciclo dell'agente.
 - `limite → END`.
@@ -45,6 +54,7 @@ compatta ── riassume i messaggi vecchi se la cronologia supera la soglia
 |---|---|---|
 | `messages` | lista di messaggi | Reducer `add_messages`: i messaggi restituiti dai nodi si **accodano**. `RemoveMessage(REMOVE_ALL_MESSAGES)` svuota la lista: lo usa `compatta`. |
 | `passi_strumento` | `int` | Nessun reducer: il nuovo valore **sostituisce** quello vecchio. Il client lo rimette a 0 a ogni turno. |
+| `categoria` | `str` | Nessun reducer: lo scrive `router` a ogni turno (`conversazione` o `fuori_ambito`). Lo legge `instrada_dopo_router`. Il motivo resta solo nel log. |
 
 ### Regola importante
 Un `AIMessage` con tool_call deve sempre essere seguito dai rispettivi `ToolMessage`. Per questo `finestra_contesto` e `dividi_cronologia` tagliano solo all'inizio di un `HumanMessage`, e `limite` risponde anche alle tool_call che non esegue.
@@ -97,6 +107,6 @@ START → riassunto → router ─ fuori ambito ─► rifiuto → END
                       END
 ```
 
-- **Router** (step 1): un LLM con output strutturato (categoria e motivo) decide se la domanda rientra nell'ambito dichiarato in configurazione. Non decide sugli strumenti.
+- **Router** (step 1, **fatto**): un LLM con output strutturato (categoria e motivo) decide se la domanda rientra nell'ambito dichiarato in configurazione. Non decide sugli strumenti.
 - **Revisore** (step 2): un LLM controlla che la risposta sia coerente con la domanda. Se non lo è, rimanda all'agente il motivo, con un limite di revisioni.
 - **Riassunto** (step 3): è il nodo `compatta` di oggi. Va adattato perché il riassunto diventi un campo dello stato e perché registri nei log il numero di messaggi prima e dopo.

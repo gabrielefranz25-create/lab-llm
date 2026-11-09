@@ -11,6 +11,12 @@
 - Resta da provare a mano: `docker compose run --rm assistente` con la tty interattiva; facoltativo
   MCP Inspector (`npx @modelcontextprotocol/inspector python -m server_mcp.meteo`).
 
+## Stato al 2026-11-09 (lezione 6, step 1 fatto)
+- Step 1 (router) completato su `feat/router`: spec `docs/superpowers/specs/2026-11-09-router-design.md`,
+  piano `docs/superpowers/plans/2026-11-09-router.md`. Esiti: `132 passed, 12 skipped`; prove reali del
+  router `2 passed`; prova a mano con domanda in ambito, seguito «e domani?» e domanda fuori ambito.
+- Prossimo: step 2 (revisore). Il prompt di partenza è quello del PDF (vedi `docs/PERCORSO_PROGETTO.md`).
+
 ## Lezione 6: evolvere l'agente
 Materiale: `materiali/LLM_Lez_6.pdf` e gli appunti `materiali/grafo, mcp, interfaccia ed architet.txt`,
 `materiali/altre info.txt`. Nove step, uno alla volta (tabella in `docs/PERCORSO_PROGETTO.md`):
