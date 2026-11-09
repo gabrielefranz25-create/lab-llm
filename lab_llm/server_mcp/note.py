@@ -105,7 +105,7 @@ mcp = FastMCP("Note")
 
 @mcp.tool
 def aggiungi_nota(testo: str) -> str:
-    """Salva una nota di testo (massimo 500 caratteri). Operazione di modifica: scrive nell'archivio."""
+    """Salva una nota di testo (massimo 500 caratteri). Da usare per richieste come "ricordami di...", "annota...", "segna...". Operazione di modifica: scrive nell'archivio."""
     try:
         nota = _archivio().aggiungi(testo)
     except ErroreNote as errore:

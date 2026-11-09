@@ -193,7 +193,7 @@ def test_tool_mcp_insieme_all_orologio():
 def test_prompt_cita_meteo_ed_errori():
     assert "meteo_attuale" in PROMPT_SISTEMA and "previsioni_meteo" in PROMPT_SISTEMA
     assert "errore" in PROMPT_SISTEMA.lower()
-    assert "elimina solo per ID" in PROMPT_SISTEMA
+    assert "solo per ID" in PROMPT_SISTEMA and "aggiungi_nota" in PROMPT_SISTEMA
 
 
 def test_prompt_e_finestra_al_modello():
