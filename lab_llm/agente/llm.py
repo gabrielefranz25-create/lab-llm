@@ -9,6 +9,7 @@ from langchain_openai import ChatOpenAI
 from openai import OpenAI
 
 from agente.config import Config
+from agente.graph import DecisioneRouter
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,11 @@ def crea_modello(config: Config, strumenti: list[BaseTool]) -> Runnable:
 def crea_riassuntore(config: Config) -> Runnable:
     """Stesso modello senza strumenti: per il riassunto della cronologia non deve chiamarne."""
     return _chat(config)
+
+
+def crea_router(config: Config) -> Runnable:
+    """Stesso modello senza strumenti, con output strutturato DecisioneRouter (response_format)."""
+    return _chat(config).with_structured_output(DecisioneRouter)
 
 
 def elenca_modelli(config: Config, client: OpenAI | None = None) -> list[str]:
