@@ -21,6 +21,7 @@ class Config:
     fuso_orario_predefinito: str
     max_passi_strumento: int
     max_messaggi_contesto: int
+    messaggi_da_tenere: int
     lm_timeout: float
     log_level: str
 
@@ -82,12 +83,19 @@ def carica_config(ambiente: Mapping[str, str] | None = None) -> Config:
     if ambiente is None:
         load_dotenv(override=False)
         ambiente = os.environ
+    max_messaggi = _intero(ambiente, "MAX_MESSAGGI_CONTESTO", 20, minimo=2)
+    da_tenere = _intero(ambiente, "MESSAGGI_DA_TENERE", 6, minimo=2)
+    if da_tenere >= max_messaggi:  # altrimenti la compattazione non accorcerebbe mai la cronologia
+        raise ErroreConfigurazione(
+            f"MESSAGGI_DA_TENERE ({da_tenere}) deve essere minore di MAX_MESSAGGI_CONTESTO ({max_messaggi})."
+        )
     return Config(
         lm_base_url=_leggi(ambiente, "LM_BASE_URL"),
         lm_model=_leggi(ambiente, "LM_MODEL"),
         fuso_orario_predefinito=_fuso(ambiente, "FUSO_ORARIO_PREDEFINITO", "Europe/Rome"),
         max_passi_strumento=_intero(ambiente, "MAX_PASSI_STRUMENTO", 3, minimo=1),
-        max_messaggi_contesto=_intero(ambiente, "MAX_MESSAGGI_CONTESTO", 20, minimo=2),
+        max_messaggi_contesto=max_messaggi,
+        messaggi_da_tenere=da_tenere,
         lm_timeout=_secondi(ambiente, "LM_TIMEOUT", 60.0),
         log_level=_livello_log(ambiente, "LOG_LEVEL", "INFO"),
     )

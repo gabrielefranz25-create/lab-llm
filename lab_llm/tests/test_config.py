@@ -14,6 +14,7 @@ def test_valori_minimi_e_default():
     assert config.fuso_orario_predefinito == "Europe/Rome"
     assert config.max_passi_strumento == 3
     assert config.max_messaggi_contesto == 20
+    assert config.messaggi_da_tenere == 6
     assert config.lm_timeout == 60.0
     assert config.log_level == "INFO"
 
@@ -36,12 +37,14 @@ def test_valori_personalizzati():
         "FUSO_ORARIO_PREDEFINITO": "Asia/Tokyo",
         "MAX_PASSI_STRUMENTO": "5",
         "MAX_MESSAGGI_CONTESTO": "8",
+        "MESSAGGI_DA_TENERE": "4",
         "LM_TIMEOUT": "12.5",
         "LOG_LEVEL": "debug",
     })
     assert config.fuso_orario_predefinito == "Asia/Tokyo"
     assert config.max_passi_strumento == 5
     assert config.max_messaggi_contesto == 8
+    assert config.messaggi_da_tenere == 4
     assert config.lm_timeout == 12.5
     assert config.log_level == "DEBUG"
 
@@ -50,6 +53,8 @@ def test_valori_personalizzati():
     ("MAX_PASSI_STRUMENTO", "0"),
     ("MAX_PASSI_STRUMENTO", "tre"),
     ("MAX_MESSAGGI_CONTESTO", "1"),
+    ("MESSAGGI_DA_TENERE", "1"),
+    ("MESSAGGI_DA_TENERE", "20"),  # deve restare sotto MAX_MESSAGGI_CONTESTO (default 20)
     ("LM_TIMEOUT", "-5"),
     ("FUSO_ORARIO_PREDEFINITO", "Roma"),
     ("LOG_LEVEL", "CHIACCHIERA"),
