@@ -10,8 +10,8 @@ La cartella del progetto è `lab_llm/`. Specifica e piano sono in `lab_llm/docs/
   `main` (avvio).
 - `server_mcp/`: server MCP come processi separati (`meteo`, `note`); non dipendono da `agente/`.
 - `tests/`: test automatici senza modello; `tests/reale/`: prove con LM Studio vero.
-- `docs/`: `COME_FUNZIONA.md`, `GUIDA_DOCKER.md`, `GUIDA_PASSO_PASSO.md`, `PROSSIMA_SESSIONE.md`,
-  specifica e piano.
+- `docs/`: `COME_FUNZIONA.md`, `GRAFO_E_STRUMENTI.md`, `PERCORSO_PROGETTO.md`, `GUIDA_DOCKER.md`,
+  `GUIDA_PASSO_PASSO.md`, `PROSSIMA_SESSIONE.md`, specifica e piano.
 - `.env.example` (in Git) → `.env` (fuori da Git); `requirements.txt` + `requirements-dev.txt`;
   `Dockerfile`, `compose.yaml`.
 
@@ -39,7 +39,8 @@ Un'applicazione da terminale in Python che conversa con un modello locale e:
 - Niente interfacce grafiche, servizi cloud o framework non concordati.
 - Lavorare solo dentro `lab_llm/`. La repository contiene altre lezioni:
   non leggerle per copiarne il codice e non modificarle.
-- Lavorare nel branch corrente; nessun branch o worktree nuovo se non richiesto.
+- Branch: ogni step o modifica su un feature branch creato da `dev` (es. `feat/router`), unito in
+  `dev` dopo la verifica; a fine sessione `dev` → `main` con il tag `lezione-N`. Nessun worktree.
 
 ## Scelte tecniche
 - Python, codice sincrono e moduli piccoli, con una separazione semplice tra
@@ -80,5 +81,7 @@ Un'applicazione da terminale in Python che conversa con un modello locale e:
 ## Documentazione
 - Tenere aggiornato il README con configurazione, avvio, test e diagnosi, riportando solo
   comandi verificati.
+- A ogni modifica del progetto aggiornare anche `docs/GRAFO_E_STRUMENTI.md` (grafo, stato,
+  strumenti) e `docs/PERCORSO_PROGETTO.md` (passi in ordine, con skill, prompt e modalità usati).
 - Aggiornare questo file quando cambiano convenzioni stabili (struttura, comandi di test,
   regole di lavoro), non per annotare l'avanzamento.
