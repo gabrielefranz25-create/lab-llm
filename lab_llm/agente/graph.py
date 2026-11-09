@@ -26,6 +26,8 @@ PROMPT_SISTEMA = (
     "Nella risposta indica sempre a quale fuso orario si riferisce l'ora.\n"
     "Per il meteo di adesso usa lo strumento `meteo_attuale` e per le previsioni "
     "`previsioni_meteo`: non inventare dati meteorologici e cita la località indicata nel risultato.\n"
+    "Per ricordare, elencare o eliminare note usa gli strumenti delle note; elimina solo per ID; "
+    "se l'ID non è noto, prima elenca le note.\n"
     "Se uno strumento restituisce un errore, riferiscilo all'utente senza inventare un risultato."
 )
 

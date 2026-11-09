@@ -101,3 +101,12 @@ def test_unisci_strumenti_scarta_duplicati(caplog):
         uniti = unisci_strumenti([primo], [doppio])
     assert uniti == [primo]
     assert "strumento duplicato scartato: doppio" in caplog.text
+
+
+def test_discovery_note_via_stdio(tmp_path):
+    note = ServerMCP("note", ("-m", "server_mcp.note"), {"NOTE_DB": str(tmp_path / "n.sqlite3")})
+    with ConnessioneMCP([note], TIMEOUT) as connessione:
+        assert {t.name for t in connessione.strumenti} == {"aggiungi_nota", "elenca_note", "elimina_nota"}
+        assert all(t.metadata["origine"] == "mcp:note" for t in connessione.strumenti)
+        assert "salvata" in strumento(connessione, "aggiungi_nota").invoke({"testo": "prova"})
+        assert "prova" in strumento(connessione, "elenca_note").invoke({})

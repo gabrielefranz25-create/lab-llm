@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from dotenv import load_dotenv
 
 LIVELLI_LOG = ("DEBUG", "INFO", "WARNING", "ERROR")
-SERVER_MCP_NOTI = ("meteo",)
+SERVER_MCP_NOTI = ("meteo", "note")
 
 
 class ErroreConfigurazione(Exception):

@@ -160,6 +160,14 @@ def test_server_da_config():
     assert server_da_config(_config(SERVER_MCP="")) == []
 
 
+def test_server_da_config_note_in_ordine():
+    meteo, note = server_da_config(_config(NOTE_DB="x/n.sqlite3"))
+    assert (meteo.nome, note.nome) == ("meteo", "note")
+    assert note.argomenti == ("-m", "server_mcp.note")
+    assert note.env["NOTE_DB"] == "x/n.sqlite3"
+    assert note.env["LOG_LEVEL"] == "INFO" and note.env["FASTMCP_LOG_LEVEL"] == "WARNING"
+
+
 def test_server_da_config_log_server_e_framework():
     (meteo,) = server_da_config(_config(SERVER_MCP="meteo", LOG_LEVEL="DEBUG"))
     assert meteo.env["LOG_LEVEL"] == "DEBUG"  # i log del nostro server seguono l'agente

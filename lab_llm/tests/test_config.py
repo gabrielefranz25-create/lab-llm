@@ -69,7 +69,7 @@ def test_valori_predefiniti_mcp():
     assert config.mcp_timeout == 30.0
     assert config.meteo_timeout == 10.0
     assert config.note_db == "dati/note.sqlite3"
-    assert config.server_mcp == ("meteo",)
+    assert config.server_mcp == ("meteo", "note")
 
 
 def test_server_mcp_vuoto_non_avvia_nulla():
@@ -77,8 +77,8 @@ def test_server_mcp_vuoto_non_avvia_nulla():
 
 
 def test_server_mcp_elenco():
-    config = carica_config({**MINIMO, "SERVER_MCP": " meteo , meteo "})
-    assert config.server_mcp == ("meteo",)
+    config = carica_config({**MINIMO, "SERVER_MCP": " meteo , meteo , note"})
+    assert config.server_mcp == ("meteo", "note")
 
 
 def test_server_mcp_sconosciuto():

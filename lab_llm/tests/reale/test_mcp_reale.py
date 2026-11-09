@@ -1,7 +1,8 @@
 """Prove reali del server MCP meteo con LM Studio: si attivano solo con PROVA_REALE=1.
 
 Richiedono LM Studio avviato con il modello caricato e la rete attiva (Open-Meteo).
-Usano il solo server meteo, qualunque cosa dica SERVER_MCP, così restano stabili.
+Le prove meteo usano il solo server meteo, quelle sulle note il solo server note con un
+NOTE_DB temporaneo (mai il file vero), qualunque cosa dica SERVER_MCP, così restano stabili.
 """
 
 import os
@@ -40,8 +41,7 @@ def connessione(config):
         yield aperta
 
 
-@pytest.fixture(scope="module")
-def chiedi(config, connessione):
+def crea_chiedi(config, connessione):
     """Funzione che porta una domanda nel grafo vero e restituisce tutti i messaggi del turno."""
     strumenti = unisci_strumenti([crea_ora_corrente(config.fuso_orario_predefinito)],
                                  connessione.strumenti)
@@ -62,6 +62,11 @@ def chiedi(config, connessione):
         return risultato["messages"]
 
     return _chiedi
+
+
+@pytest.fixture(scope="module")
+def chiedi(config, connessione):
+    return crea_chiedi(config, connessione)
 
 
 def chiamate(messaggi, nome: str) -> list[dict]:
@@ -97,3 +102,47 @@ def test_citta_inesistente_diretta(connessione):
     strumento = next(s for s in connessione.strumenti if s.name == "meteo_attuale")
     esito = strumento.invoke({"citta": "Xyzzyqwop"})
     assert esito.startswith("Errore dallo strumento meteo_attuale: città non trovata"), esito
+
+
+# --- Note: server note con un archivio temporaneo, condiviso dai tre test (in ordine) ---
+
+@pytest.fixture(scope="module")
+def config_note(config, tmp_path_factory):
+    """Config con NOTE_DB su una cartella temporanea e il solo server note."""
+    db = tmp_path_factory.mktemp("note_reali") / "note.sqlite3"
+    return replace(config, note_db=str(db), server_mcp=("note",))
+
+
+@pytest.fixture(scope="module")
+def connessione_note(config_note):
+    with ConnessioneMCP(server_da_config(config_note), config_note.mcp_timeout) as aperta:
+        yield aperta
+
+
+@pytest.fixture(scope="module")
+def chiedi_note(config_note, connessione_note):
+    return crea_chiedi(config_note, connessione_note)
+
+
+def test_aggiungi_nota_reale(chiedi_note):
+    messaggi = chiedi_note("Ricordami di consegnare il report venerdì")
+    trovate = chiamate(messaggi, "aggiungi_nota")
+    assert len(trovate) == 1, messaggi
+    assert "salvata" in risultato_di(messaggi, trovate[0]), messaggi
+
+
+def test_elimina_nota_inesistente_reale(chiedi_note, connessione_note):
+    messaggi = chiedi_note("Elimina la nota 99")
+    trovate = chiamate(messaggi, "elimina_nota")
+    assert trovate, messaggi
+    assert any(risultato_di(messaggi, c).startswith("Errore dallo strumento elimina_nota")
+               for c in trovate), messaggi
+    elenco = next(s for s in connessione_note.strumenti if s.name == "elenca_note").invoke({})
+    assert "report" in elenco, elenco
+
+
+def test_note_dopo_riavvio(config_note):
+    # Nuova connessione (nuovo sottoprocesso) sullo stesso NOTE_DB: la nota deve esserci ancora.
+    with ConnessioneMCP(server_da_config(config_note), config_note.mcp_timeout) as nuova:
+        elenco = next(s for s in nuova.strumenti if s.name == "elenca_note").invoke({})
+    assert "report" in elenco, elenco

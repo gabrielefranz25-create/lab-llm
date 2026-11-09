@@ -33,6 +33,7 @@ def server_da_config(config: Config) -> list[ServerMCP]:
     disponibili = {
         "meteo": ServerMCP("meteo", ("-m", "server_mcp.meteo"),
                            {**comuni, "METEO_TIMEOUT": str(config.meteo_timeout)}),
+        "note": ServerMCP("note", ("-m", "server_mcp.note"), {**comuni, "NOTE_DB": config.note_db}),
     }
     return [disponibili[nome] for nome in config.server_mcp]
 
