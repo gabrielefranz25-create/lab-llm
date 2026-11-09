@@ -4,3 +4,6 @@ langchain-core==1.7.0
 openai==3.37.0
 python-dotenv==1.2.4
 tzdata==2026.5
+fastmcp==4.1.6
+mcp==2.3.0
+httpx==0.28.1
