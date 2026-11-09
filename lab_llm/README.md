@@ -61,7 +61,7 @@ Invoke-RestMethod http://localhost:1234/v1/models | Select-Object -ExpandPropert
 | `LOG_LEVEL` | no | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR`; passa anche ai server MCP |
 | `MCP_TIMEOUT` | no | `30` | secondi di attesa per l'avvio di un server MCP e per ogni sua chiamata; deve essere maggiore del doppio di `METEO_TIMEOUT` |
 | `METEO_TIMEOUT` | no | `10` | secondi di attesa per ogni richiesta HTTP del server meteo (ne fa due in sequenza: geocoding e previsioni) |
-| `NOTE_DB` | no | `dati/note.sqlite3` | file SQLite delle note; in Docker sta nel volume `note` (vedi sotto) |
+| `NOTE_DB` | no | `dati/note.sqlite3` | file SQLite delle note; in Docker sta nel volume `note` (vedi sotto); un percorso relativo parte dalla cartella `lab_llm/` (directory di lavoro dei server, `CARTELLA_PROGETTO` in `agente/mcp_ponte.py`), non da quella della shell |
 | `SERVER_MCP` | no | `meteo,note` | server MCP da avviare, separati da virgole; se la variabile è presente ma vuota non parte nessun server; un nome sconosciuto dà un errore di configurazione |
 | `PROVA_REALE` | no | — | solo per i test con LM Studio vero (vedi sotto) |
 
@@ -207,7 +207,7 @@ npx @modelcontextprotocol/inspector python -m server_mcp.meteo
 ## Diagnosi
 
 Messaggi verificati provocando ciascun errore. In tutti i casi il programma esce con codice 1, senza
-traceback.
+traceback. (Il `WARNING ... server MCP ... non disponibile` non è un errore fatale: vedi «Diagnosi per livelli».)
 
 | Sintomo | Causa | Soluzione |
 |---|---|---|
@@ -220,7 +220,6 @@ traceback.
 | Dal container: `LM Studio non risponde su http://host.docker.internal:1234/v1` | il container non raggiunge l'host | [docs/GUIDA_DOCKER.md](docs/GUIDA_DOCKER.md), sezione 6 |
 | `Errore di configurazione: SERVER_MCP contiene server sconosciuti: ...` | nome diverso da `meteo` o `note` | correggi `SERVER_MCP` in `.env` |
 | `Errore di configurazione: MCP_TIMEOUT (...) deve essere maggiore del doppio di METEO_TIMEOUT (...)` | timeout incoerenti | alza `MCP_TIMEOUT` o abbassa `METEO_TIMEOUT` |
-| `WARNING ... server MCP ... non disponibile: ...` | un server non è partito | «Diagnosi per livelli», livello 1 |
 
 Se il modello sbaglia il fuso (per esempio passa `"Roma"`), lo strumento gli restituisce un messaggio
 d'errore e il modello può riprovare entro `MAX_PASSI_STRUMENTO` giri: il programma non si ferma.
