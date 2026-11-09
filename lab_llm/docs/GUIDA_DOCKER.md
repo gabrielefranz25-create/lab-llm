@@ -19,7 +19,7 @@ docker compose run --rm assistente
 ```
 
 - `run` e non `up`: la chat ha bisogno di uno stdin interattivo.
-- `--rm` elimina il container all'uscita, coerente con «nessuna persistenza».
+- `--rm` elimina il container all'uscita (le note restano nel volume `note`, sezione 10).
 - `compose.yaml` sovrascrive `LM_BASE_URL` con `http://host.docker.internal:1234/v1`: dal container,
   `localhost` è il container stesso, non il PC.
 - Gli orari nei **log** del container sono in UTC (il container non ha un fuso impostato). L'ora
@@ -264,3 +264,38 @@ docker image prune                # rimuove le immagini orfane (chiede conferma)
 ```
 
 Procedura documentata, non eseguita qui: l'immagine è stata lasciata per le prove successive.
+
+## 10. Le note e il volume `note`
+
+L'immagine contiene anche `server_mcp/`: i server MCP partono dentro il container, come
+sottoprocessi dell'agente. Il server `note` salva in `dati/note.sqlite3` (`NOTE_DB`), cioè in
+`/app/dati`, che `compose.yaml` collega al **volume con nome** `note`. Il container con `--rm` sparisce
+a ogni uscita, ma il volume resta: le note sopravvivono (la cronologia della chat no).
+
+Verificato il 2026-11-09:
+- `docker compose build` termina senza errori;
+- dal container la rete verso Open-Meteo risponde:
+  `docker compose run --rm assistente python -c "import httpx; print(httpx.get('https://api.open-meteo.com/v1/forecast?latitude=46&longitude=13&current=temperature_2m', timeout=10).status_code)"`
+  stampa `200`;
+- con l'input passato via pipe, il modello ha chiamato `meteo_attuale` e `aggiungi_nota`:
+
+  ```powershell
+  "Che tempo fa a Udine?`nRicordami di comprare il pane`nesci" | docker compose run --rm -T assistente
+  ```
+- una seconda esecuzione con `"Elenca le mie note`nesci"` ha restituito la nota: il volume
+  persiste tra un container e l'altro.
+
+Il nome reale del volume è il prefisso del progetto più `note`: su questo PC `lab_llm_note`
+(`docker volume ls` lo mostra).
+
+**Per svuotare le note**, cancella il volume (a nessun container deve servire in quel momento):
+
+```powershell
+docker volume rm lab_llm_note
+```
+
+Alla prossima esecuzione Docker ne crea uno nuovo e vuoto. `docker compose down` **non** lo elimina
+(servirebbe `-v`, da evitare se vuoi tenere le note).
+
+In locale, senza Docker, le note stanno in `dati/note.sqlite3` dentro `lab_llm/`: per svuotarle basta
+cancellare quel file con l'agente spento.

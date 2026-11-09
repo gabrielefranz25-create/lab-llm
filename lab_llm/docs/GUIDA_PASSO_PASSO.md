@@ -212,10 +212,53 @@ git status                                                   # pulito
 git log --oneline
 ```
 
+## 12. Lezione 5: strumenti MCP meteo e note
+
+Piano: `docs/superpowers/plans/2026-11-09-strumenti-mcp.md` (specifica accanto, in `specs/`). I
+tre pin nuovi di `requirements.txt` sono `fastmcp==4.1.6`, `mcp==2.3.0`, `httpx==0.28.1`: niente
+`langchain-mcp-adapters` (richiede `mcp<2`). Prima di scrivere il codice che usa `fastmcp` si
+controllano le API sulla libreria installata.
+
+| Passo | File | Che cosa deve contenere |
+|---|---|---|
+| 1 | `server_mcp/meteo.py` (logica) | geocoding e previsioni Open-Meteo con `httpx`; `ErroreMeteo` con messaggi leggibili; città con spazi e accenti codificate nell'URL; località senza regione senza `None`; valori nulli come «n.d.» |
+| 2 | `server_mcp/meteo.py` (server) | `FastMCP` con i tool `meteo_attuale` e `previsioni_meteo`; niente su stdout, log su stderr; `ToolError` per gli errori attesi |
+| 3 | `agente/config.py`, `.env.example` | `MCP_TIMEOUT`, `METEO_TIMEOUT`, `NOTE_DB`, `SERVER_MCP`; controllo `MCP_TIMEOUT` > 2 × `METEO_TIMEOUT` |
+| 4 | `agente/mcp_ponte.py` | `ConnessioneMCP`: thread con event loop, un «custode» per server, `list_tools()` → `StructuredTool`, tre esiti distinti, server che non parte → WARNING e si prosegue; `unisci_strumenti` |
+| 5 | `agente/graph.py`, `agente/main.py` | log `strumento=… origine=… call_id=… argomenti=… esito=… risultato=…`; `server_da_config`; strumenti locali e MCP uniti; intestazione con l'elenco degli strumenti |
+| 6 | `tests/reale/test_mcp_reale.py` | prove con LM Studio e rete: meteo a Udine, previsioni a Tokyo, città inesistente |
+| 7 | `server_mcp/note.py` | `ArchivioNote` su SQLite con query parametrizzate; tool `aggiungi_nota`, `elenca_note`, `elimina_nota`; ID inesistente → errore senza cancellare |
+| 8 | `agente/graph.py` (prompt), descrizione di `aggiungi_nota` | riga esplicita nel prompt: la nota va salvata chiamando lo strumento |
+| 9 | `Dockerfile`, `compose.yaml` | `COPY server_mcp/`, cartella `/app/dati` per l'utente non root, volume `note:/app/dati` |
+| 10 | documentazione | questa sezione, README, COME_FUNZIONA, GUIDA_DOCKER |
+
+Test automatici: `tests/test_meteo.py`, `tests/test_mcp_ponte.py` (con un server finto,
+`tests/server_morente.py`), `tests/test_note.py`, più i test di configurazione e di grafo estesi. Non
+usano né il modello né la rete.
+
+```powershell
+python -m pytest                     # 122 passed, 10 skipped
+$env:PROVA_REALE="1"; python -m pytest tests/reale/test_mcp_reale.py -v -o log_cli=true --log-cli-level=INFO
+Remove-Item Env:PROVA_REALE          # 6 passed
+python -m agente                     # «Che tempo fa a Udine?», «Ricordami di comprare il pane»
+```
+
+All'avvio, su stderr, compaiono `server MCP meteo: catalogo [meteo_attuale, previsioni_meteo]` e,
+a ogni uso, le righe `strumento=...`. Una nota salvata davvero si riconosce da
+`strumento=aggiungi_nota ... esito=ok`: la sola risposta «Ho salvato la nota» non basta (il modello
+piccolo l'aveva data senza chiamare lo strumento).
+
+Docker (verificato): `docker compose build`, poi la prova via pipe con `-T`; le note stanno nel volume
+`note` (vedi [GUIDA_DOCKER.md](GUIDA_DOCKER.md), sezione 10).
+
+*Pausa di sessione consigliata: `/clear`.*
+
 ## Diagnosi rapida
 
 | Problema | Dove guardare |
 |---|---|
 | errori all'avvio (`.env`, LM Studio spento, modello assente, fuso non valido) | README, sezione «Diagnosi» |
 | Docker non parte, il container non raggiunge LM Studio, la chat non riceve input | [GUIDA_DOCKER.md](GUIDA_DOCKER.md) |
+| un server MCP non parte, il tool non compare, il modello non chiama lo strumento | README, «Strumenti MCP e traccia nei log» → «Diagnosi per livelli» |
+| le note in Docker, come svuotarle | [GUIDA_DOCKER.md](GUIDA_DOCKER.md), sezione 10 |
 | capire che cosa succede a ogni passo | togli il `#` ai `print("[passo] ...")` nel codice, oppure `LOG_LEVEL=DEBUG` |

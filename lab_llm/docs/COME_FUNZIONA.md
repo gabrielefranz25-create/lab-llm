@@ -10,6 +10,10 @@
   programma esegue davvero. L'output indica sempre il fuso orario.
 - Una **cronologia di sessione** tenuta dal client in una lista: si perde all'uscita. Quando diventa
   lunga, il nodo `compatta` fa riassumere al modello i messaggi vecchi.
+- Due **server MCP** (lezione 5), `meteo` e `note`, avviati come sottoprocessi: i loro strumenti
+  (`meteo_attuale`, `previsioni_meteo`, `aggiungi_nota`, `elenca_note`, `elimina_nota`) vengono
+  scoperti dal catalogo e usati dal grafo come l'orologio. Le note sono salvate in SQLite e
+  **persistono**; la cronologia della chat no.
 - Avvio anche in **Docker Compose**, con LM Studio che resta sull'host.
 
 ## Che cosa fa l'agente, passo per passo
@@ -32,12 +36,15 @@
 main.py ──► config.py        variabili d'ambiente → Config (errori chiari, uscita 1)
    │──────► llm.py           ChatOpenAI verso LM Studio (con strumenti e riassuntore senza) + verifica
    │──────► strumenti.py     strumento ora_corrente
+   │──────► mcp_ponte.py     avvia i server MCP e ne espone il catalogo come tool sincroni
    │──────► graph.py         stato, nodi, instradamento, compattazione, finestra di contesto
    └──────► client.py        ciclo della chat e cronologia
 ```
 
 - `graph.py` non importa `llm.py`: modello e strumenti gli arrivano da fuori. Così i test usano un
   modello finto, e nelle prossime lezioni si potranno aggiungere strumenti senza toccare il grafo.
+- I server MCP (`server_mcp/meteo.py`, `server_mcp/note.py`) sono **programmi a parte**, non moduli
+  dell'agente: l'agente li avvia con `python -m server_mcp.meteo` e ci parla via stdin/stdout.
 - `client.py` non sa nulla di LM Studio: conosce solo il grafo compilato e gli errori
   `openai.APIError` e `GraphRecursionError`, che trasforma in messaggi leggibili.
 
@@ -139,6 +146,109 @@ Con il nodo `limite` non dovrebbe mai scattare; se scatta, il client mostra un e
 Nelle prove reali `google/gemma-4-e2b` chiama `ora_corrente` con `{}` per «Che ore sono?» (quindi
 vale il default `Europe/Rome`) e con `{'fuso_orario': 'Asia/Tokyo'}` per «E a Tokyo?».
 
+## Strumenti MCP: host, client e server
+
+MCP (Model Context Protocol) è un protocollo per offrire strumenti a un modello senza scriverli
+dentro l'agente. Tre ruoli:
+
+| Ruolo | Chi è qui | Che cosa fa |
+|---|---|---|
+| **host** | l'applicazione `python -m agente` (grafo + modello) | decide quali server usare e porta le richieste del modello |
+| **client** | l'oggetto `fastmcp.Client` dentro `agente/mcp_ponte.py` | una sessione con **un** server: chiede il catalogo, invia le chiamate |
+| **server** | `server_mcp/meteo.py`, `server_mcp/note.py` | processi separati che dichiarano i tool e li eseguono |
+
+Il trasporto è **stdio**: il client lancia il server come sottoprocesso (`sys.executable -m
+server_mcp.meteo`, con `cwd` la cartella `lab_llm/`) e scambia messaggi JSON-RPC su stdin/stdout. Per
+questo i server non scrivono mai su stdout (sarebbe corrompere il protocollo): i loro log vanno su
+stderr.
+
+### Il percorso di uno strumento
+
+```
+avvio      tools/list  ──► catalogo (nome, descrizione, schema JSON dei parametri)
+                          └► un StructuredTool LangChain per voce, con schema = quello del server
+costruzione  bind_tools(strumenti) ──► il modello conosce nome, descrizione e schema
+domanda      il modello risponde con una tool_call {name, args, id}
+esecuzione   nodo strumenti ──► tool.invoke(args) ──► tools/call (JSON-RPC) ──► il server esegue
+risposta     testo del risultato ──► ToolMessage(content=testo, tool_call_id=id) ──► torna al nodo llm
+```
+
+- `tools/list` è la **discovery**: nome, descrizione e schema dei tool arrivano **solo** dal server
+  (`list_tools()`), mai scritti nell'agente. Aggiungere un tool a un server lo rende disponibile
+  senza toccare il grafo.
+- `langchain-mcp-adapters`, che fa questo lavoro, **non è usato**: richiede `mcp<2`, incompatibile
+  con `mcp==2.3.0` (richiesta da `fastmcp==4.1.6`). Il piccolo adattatore è `ConnessioneMCP._crea_strumento`.
+- Lo schema è passato a LangChain come dizionario JSON e **non viene validato** lì: gli argomenti
+  scelti dal modello arrivano al server, che li valida. Un argomento sbagliato diventa un testo
+  d'errore, non un'eccezione che rompe il turno.
+- Il nodo `strumenti` del grafo non sa che un tool è MCP: lo invoca come l'orologio. L'unica
+  differenza visibile è `origine=mcp:<server>` nel log (nel campo `metadata` del tool).
+
+### `tool_call_id` e ID JSON-RPC
+
+Sono due identificativi diversi, su due «cavi» diversi:
+
+| | `tool_call_id` | ID JSON-RPC |
+|---|---|---|
+| tra chi | modello ↔ cronologia della conversazione | client ↔ server MCP |
+| chi lo crea | il modello (in LM Studio) | la libreria client, a ogni richiesta |
+| a che serve | abbinare il `ToolMessage` alla `tool_call` che risponde | abbinare la risposta JSON-RPC alla sua richiesta |
+| dove si vede | nei log (`call_id=...`) | non si vede: lo gestisce la libreria |
+
+Il server MCP non conosce mai il `tool_call_id`, e il modello non vede mai l'ID JSON-RPC.
+
+### Perché il ponte ha un thread
+
+Il grafo e il client della chat sono **sincroni**; la libreria MCP è **asincrona** e una sessione con un
+server deve restare aperta per tutta la chat (riavviare un sottoprocesso a ogni domanda sarebbe lento
+e perderebbe lo stato). `ConnessioneMCP` risolve così:
+
+1. all'ingresso (`with ConnessioneMCP(...)`) crea un **event loop asyncio** e lo fa girare in un
+   **thread dedicato** (`ponte-mcp`), l'unico posto del programma con `asyncio`;
+2. per ogni server, una coroutine «custode» apre la sessione, legge il catalogo e poi aspetta un
+   evento di chiusura: la sessione si apre e si chiude nello stesso task, come richiede `anyio`;
+3. ogni tool sincrono invia `call_tool` al loop con `run_coroutine_threadsafe` e attende l'esito
+   (`futuro.result(timeout)`): per il grafo è una normale chiamata bloccante;
+4. all'uscita segnala la chiusura ai custodi, attende che i sottoprocessi terminino, ferma il loop e
+   unisce il thread.
+
+### I tre esiti che il modello legge
+
+| Situazione | Testo nel `ToolMessage` | Livello del log |
+|---|---|---|
+| successo | il testo restituito dal server | INFO, `esito=ok` |
+| il server ha rifiutato la richiesta (`ToolError`: argomenti non validi, ID inesistente, città non trovata) | `Errore dallo strumento <nome>: <messaggio>` | WARNING + INFO `esito=errore` |
+| il collegamento è fallito (timeout, processo morto) | `Errore di collegamento MCP con il server <server>: <dettaglio>` | WARNING + INFO `esito=errore` |
+
+Distinguerli serve a capire dove cercare: nel secondo caso il server funziona e la richiesta era
+sbagliata; nel terzo è il collegamento a non funzionare.
+
+Se un server non parte o non risponde al catalogo entro `MCP_TIMEOUT`, `ConnessioneMCP` scrive un
+WARNING e **prosegue**: gli altri strumenti restano disponibili e la chat si avvia. Anche per i
+timeout vale `MCP_TIMEOUT` (per il server meteo, `METEO_TIMEOUT` vale per ogni richiesta HTTP).
+La variabile `FASTMCP_LOG_LEVEL=WARNING`, passata ai sottoprocessi, tace il banner del framework.
+
+### I due server
+
+- **meteo** (`server_mcp/meteo.py`): `meteo_attuale(citta)` e `previsioni_meteo(citta, giorni=3)`,
+  1–7 giorni. Chiama l'API di geocoding e poi quella delle previsioni di Open-Meteo (con `httpx`);
+  indica sempre la località scelta (regione e paese, se noti), elenca le alternative con lo stesso
+  nome, scrive «n.d.» per i valori mancanti e traduce i codici WMO in italiano.
+- **note** (`server_mcp/note.py`): `aggiungi_nota(testo)`, `elenca_note(limite=10)`,
+  `elimina_nota(id_nota)`. Archivio SQLite nel file `NOTE_DB`; query parametrizzate (un testo come
+  `l'esame; DROP TABLE note` viene salvato letteralmente). `aggiungi_nota` ed `elimina_nota` modificano
+  i dati e lo dichiarano nella loro descrizione.
+- In entrambi la logica sta in funzioni e classi che non dipendono da MCP (`testo_meteo_attuale`,
+  `ArchivioNote`), così si testano senza avviare nulla; il decoratore `@mcp.tool` le espone soltanto.
+
+### Che cosa fa il prompt di sistema
+
+Con un modello piccolo la descrizione del tool non basta: `PROMPT_SISTEMA` dice di usare
+`meteo_attuale` e `previsioni_meteo` per il meteo, di **chiamare** `aggiungi_nota` quando l'utente
+chiede di ricordare qualcosa e di non dire mai «salvata» se lo strumento non l'ha confermato, e di
+riferire gli errori senza inventare risultati. Senza quella riga `google/gemma-4-e2b` rispondeva
+«Ho salvato la nota» senza chiamare nulla.
+
 ## Compattazione della cronologia (nodo `compatta`)
 
 - Scatta all'inizio del turno quando la cronologia supera `MAX_MESSAGGI_CONTESTO` (default 20).
@@ -181,7 +291,10 @@ stampata.
 | avvio | INFO | `avvio: modello=google/gemma-4-e2b server=http://localhost:1234/v1 max_passi=3 contesto=20 da_tenere=6` |
 | cronologia compattata | INFO | `compattati 16 messaggi, tenuti 5` |
 | riassunto non riuscito | WARNING | `riassunto non riuscito, cronologia lasciata intera: Connection error.` |
-| chiamata allo strumento | INFO | `strumento ora_corrente {'fuso_orario': 'Asia/Tokyo'} -> Fuso orario: Asia/Tokyo ...` |
+| chiamata a uno strumento | INFO | `strumento=ora_corrente origine=locale call_id=... argomenti={"fuso_orario": "Asia/Tokyo"} esito=ok risultato=Fuso orario: Asia/Tokyo ...` |
+| chiamata a un tool MCP | INFO | `strumento=meteo_attuale origine=mcp:meteo call_id=... argomenti={"citta": "Udine"} esito=ok risultato=...` |
+| catalogo di un server MCP | INFO | `server MCP meteo: catalogo [meteo_attuale, previsioni_meteo]` |
+| server MCP non disponibile, errore di collegamento | WARNING | `server MCP meteo non disponibile: ...` |
 | fuso non valido, strumento sconosciuto | WARNING | `strumento ora_corrente: fuso 'Roma' non riconosciuto` |
 | limite raggiunto | WARNING | `limite di 3 passaggi raggiunto: 1 tool_call non eseguite` |
 | finestra di contesto applicata | DEBUG | `contesto: inviati 20 di 34 messaggi` |

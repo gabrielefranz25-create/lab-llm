@@ -6,9 +6,12 @@ La cartella del progetto è `lab_llm/`. Specifica e piano sono in `lab_llm/docs/
 ## Struttura
 - `agente/`: pacchetto Python, un modulo per responsabilità:
   `config` (variabili d'ambiente), `strumenti` (orologio), `graph` (stato, nodi, instradamento),
-  `llm` (LM Studio), `client` (chat da terminale), `main` (avvio).
+  `llm` (LM Studio), `client` (chat da terminale), `mcp_ponte` (ponte sincrono verso i server MCP),
+  `main` (avvio).
+- `server_mcp/`: server MCP come processi separati (`meteo`, `note`); non dipendono da `agente/`.
 - `tests/`: test automatici senza modello; `tests/reale/`: prove con LM Studio vero.
-- `docs/`: `COME_FUNZIONA.md`, `GUIDA_DOCKER.md`, specifica e piano.
+- `docs/`: `COME_FUNZIONA.md`, `GUIDA_DOCKER.md`, `GUIDA_PASSO_PASSO.md`, `PROSSIMA_SESSIONE.md`,
+  specifica e piano.
 - `.env.example` (in Git) → `.env` (fuori da Git); `requirements.txt` + `requirements-dev.txt`;
   `Dockerfile`, `compose.yaml`.
 
@@ -16,19 +19,22 @@ La cartella del progetto è `lab_llm/`. Specifica e piano sono in `lab_llm/docs/
 - Avvio: `python -m agente`. Docker: `docker compose build`, poi `docker compose run --rm assistente`.
 - Test automatici: `python -m pytest` (le prove reali risultano skipped).
 - Prove reali (LM Studio acceso): `$env:PROVA_REALE="1"; python -m pytest -m reale -v`.
+- Prove reali MCP (anche rete): `$env:PROVA_REALE="1"; python -m pytest tests/reale/test_mcp_reale.py -v -o log_cli=true --log-cli-level=INFO`.
 - I print didattici `# print("[passo] ...")` restano commentati nel codice committato.
 
 ## Obiettivo
 Un'applicazione da terminale in Python che conversa con un modello locale e:
 - organizza il flusso in un grafo LangGraph esplicito (stato, nodi, instradamento riconoscibili);
 - usa un modello servito da LM Studio, che resta sul computer host;
-- conserva la cronologia della conversazione per la durata della sessione (nessuna persistenza);
+- conserva la cronologia della conversazione per la durata della sessione (nessuna persistenza della
+  cronologia); le note del server MCP `note` sono invece persistenti (SQLite, volume Docker `note`);
 - offre uno strumento orologio con fuso orario esplicito, richiesto dal modello tramite tool calling
   ed eseguito davvero dal programma;
+- usa strumenti MCP (meteo, note) scoperti dal catalogo dei server, mai descritti nell'agente;
 - si avvia anche con Docker Compose.
 
 ## Confini
-- Implementare solo i requisiti concordati. Altri strumenti, MCP, workflow e RAG arriveranno
+- Implementare solo i requisiti concordati. Altri strumenti, workflow e RAG arriveranno
   nelle lezioni successive: non anticiparli.
 - Niente interfacce grafiche, servizi cloud o framework non concordati.
 - Lavorare solo dentro `lab_llm/`. La repository contiene altre lezioni:
@@ -44,6 +50,11 @@ Un'applicazione da terminale in Python che conversa con un modello locale e:
 - Un file di configurazione di esempio senza credenziali; il file reale resta fuori da Git.
 - Docker Compose per l'applicazione; LM Studio non va containerizzato.
 - Dipendenze motivate, concordate e con versioni fissate.
+- MCP: trasporto stdio; grafo e client restano sincroni, `asyncio` solo in `agente/mcp_ponte.py`
+  (thread dedicato) e nei server; nome, descrizione e schema dei tool solo da `list_tools()`; i server
+  non scrivono su stdout (protocollo), log su stderr.
+- Esiti dei tool letti dal modello: `Errore dallo strumento <nome>: ...` e
+  `Errore di collegamento MCP con il server <server>: ...`.
 - Comandi documentati anche per PowerShell (Windows).
 
 ## Metodo: Superpowers
