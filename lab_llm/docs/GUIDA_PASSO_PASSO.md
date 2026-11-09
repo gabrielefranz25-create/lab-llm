@@ -110,6 +110,16 @@ max_messaggi_contesto, fuso_predefinito)`.
 strumento vero e istante fisso, limite, strumento sconosciuto, argomenti sbagliati, più tool_call
 nello stesso messaggio, log, prompt e finestra inviati al modello).
 
+**Aggiunta del 9/11: nodo `compatta`** (specifica e piano `2026-11-09-nodo-compatta*.md`)
+- `config.py`: `MESSAGGI_DA_TENERE` (default 6, ≥ 2, minore di `MAX_MESSAGGI_CONTESTO`).
+- `llm.py`: `crea_riassuntore(config)`, lo stesso `ChatOpenAI` senza `bind_tools`.
+- `graph.py`: `dividi_cronologia` (taglio su un `HumanMessage`), `trascrivi` (cronologia in testo),
+  nodo `compatta` tra `START` e `llm`: oltre soglia riassume i vecchi e restituisce
+  `RemoveMessage(id=REMOVE_ALL_MESSAGES)` + riassunto (`SystemMessage`, `name="riassunto"`) + recenti;
+  il nodo `llm` unisce il riassunto al prompt di sistema. Con `riassuntore=None` non compatta.
+- **`tests/test_compatta.py`**: sotto/sopra soglia, taglio, riassunto precedente, riassunto inviato al
+  modello, errore del riassuntore, nessun riassuntore.
+
 ## 6. Collegamento a LM Studio (Task 5)
 
 **`agente/llm.py`**
@@ -152,6 +162,8 @@ python -m agente                     # prova a mano: «Che ore sono?», «E a To
 **`tests/reale/test_lm_studio.py`** (con `tests/reale/__init__.py` vuoto): marker `reale`, saltate se
 `PROVA_REALE` non vale `1`. Usano il grafo vero e controllano nella cronologia che il modello abbia
 chiamato `ora_corrente` con `Asia/Tokyo` per Tokyo e con il predefinito per «Che ore sono?».
+Una quarta prova (aggiunta il 9/11) fa cinque domande con soglia 6 e controlla che, dopo la
+compattazione, il modello ricordi ancora il nome detto all'inizio.
 
 ```powershell
 $env:PROVA_REALE="1"; python -m pytest -m reale -v

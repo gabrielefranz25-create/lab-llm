@@ -8,27 +8,31 @@
   `agente/graph.py`, senza componenti prefabbricati (`create_react_agent`, `ToolNode`).
 - Uno **strumento orologio**, `ora_corrente`, che il modello richiede con il tool calling e che il
   programma esegue davvero. L'output indica sempre il fuso orario.
-- Una **cronologia di sessione** tenuta dal client in una lista: si perde all'uscita.
+- Una **cronologia di sessione** tenuta dal client in una lista: si perde all'uscita. Quando diventa
+  lunga, il nodo `compatta` fa riassumere al modello i messaggi vecchi.
 - Avvio anche in **Docker Compose**, con LM Studio che resta sull'host.
 
 ## Che cosa fa l'agente, passo per passo
 
 1. Il client legge la domanda (`Tu> ...`) e invoca il grafo con la cronologia più la nuova domanda.
-2. Il nodo `llm` manda al modello il prompt di sistema e gli ultimi messaggi della cronologia.
-3. Se il modello risponde con del testo, il turno finisce e il client stampa `Assistente> ...`.
-4. Se il modello chiede uno strumento (una *tool_call*), il nodo `strumenti` lo esegue e aggiunge il
+2. Il nodo `compatta` controlla la lunghezza della cronologia: oltre `MAX_MESSAGGI_CONTESTO` messaggi
+   fa riassumere al modello quelli vecchi e tiene solo il riassunto più gli ultimi `MESSAGGI_DA_TENERE`.
+3. Il nodo `llm` manda al modello il prompt di sistema (con l'eventuale riassunto) e gli ultimi
+   messaggi della cronologia.
+4. Se il modello risponde con del testo, il turno finisce e il client stampa `Assistente> ...`.
+5. Se il modello chiede uno strumento (una *tool_call*), il nodo `strumenti` lo esegue e aggiunge il
    risultato alla cronologia; poi si torna al nodo `llm`, che ora vede l'ora vera e risponde.
-5. Se il modello continua a chiedere strumenti oltre `MAX_PASSI_STRUMENTO` volte, il nodo `limite`
+6. Se il modello continua a chiedere strumenti oltre `MAX_PASSI_STRUMENTO` volte, il nodo `limite`
    chiude il turno con un messaggio di scuse.
-6. Il client salva la cronologia restituita dal grafo e ripropone il prompt.
+7. Il client salva la cronologia restituita dal grafo (già compattata) e ripropone il prompt.
 
 ## Moduli
 
 ```
 main.py ──► config.py        variabili d'ambiente → Config (errori chiari, uscita 1)
-   │──────► llm.py           ChatOpenAI verso LM Studio + verifica del modello all'avvio
+   │──────► llm.py           ChatOpenAI verso LM Studio (con strumenti e riassuntore senza) + verifica
    │──────► strumenti.py     strumento ora_corrente
-   │──────► graph.py         stato, nodi, instradamento, finestra di contesto
+   │──────► graph.py         stato, nodi, instradamento, compattazione, finestra di contesto
    └──────► client.py        ciclo della chat e cronologia
 ```
 
@@ -40,11 +44,11 @@ main.py ──► config.py        variabili d'ambiente → Config (errori chiar
 ## Schema del grafo
 
 ```
-          ┌────────────────────────────────────────────┐
-          ▼                                            │
-START ─► llm ─► instrada_dopo_llm ─┬─ nessuna tool_call ──────────► END
-                                   ├─ tool_call e passi < MAX ─► strumenti
-                                   └─ tool_call e passi ≥ MAX ─► limite ─► END
+                      ┌────────────────────────────────────────────┐
+                      ▼                                            │
+START ─► compatta ─► llm ─► instrada_dopo_llm ─┬─ nessuna tool_call ──────────► END
+                                               ├─ tool_call e passi < MAX ─► strumenti
+                                               └─ tool_call e passi ≥ MAX ─► limite ─► END
 ```
 
 Lo stesso grafo in Mermaid, generato dal codice con `get_graph().draw_mermaid()` (le frecce
@@ -58,11 +62,13 @@ config:
 ---
 graph TD;
 	__start__([<p>__start__</p>]):::first
+	compatta(compatta)
 	llm(llm)
 	strumenti(strumenti)
 	limite(limite)
 	__end__([<p>__end__</p>]):::last
-	__start__ --> llm;
+	__start__ --> compatta;
+	compatta --> llm;
 	llm -.-> __end__;
 	llm -.-> limite;
 	llm -.-> strumenti;
@@ -76,7 +82,7 @@ graph TD;
 Per rigenerarlo (con una lambda al posto del modello: per disegnare il grafo non serve LM Studio):
 
 ```powershell
-python -c "from langchain_core.runnables import RunnableLambda; from agente.graph import costruisci_grafo; from agente.strumenti import crea_ora_corrente; g = costruisci_grafo(RunnableLambda(lambda m: m), [crea_ora_corrente()], max_passi=3, max_messaggi_contesto=20, fuso_predefinito='Europe/Rome'); print(g.get_graph().draw_mermaid())"
+python -c "from langchain_core.runnables import RunnableLambda; from agente.graph import costruisci_grafo; from agente.strumenti import crea_ora_corrente; g = costruisci_grafo(RunnableLambda(lambda m: m), [crea_ora_corrente()], max_passi=3, max_messaggi_contesto=20, fuso_predefinito='Europe/Rome', riassuntore=RunnableLambda(lambda m: m)); print(g.get_graph().draw_mermaid())"
 ```
 
 ## Stato
@@ -97,7 +103,8 @@ class AgentState(TypedDict):
 
 | Nodo | Che cosa fa | Restituisce |
 |---|---|---|
-| `llm` | invia `[prompt di sistema] + finestra_contesto(messages)` al modello, che ha già lo strumento collegato (`bind_tools`) | `{"messages": [AIMessage]}` |
+| `compatta` | se i messaggi sono più di `MAX_MESSAGGI_CONTESTO`, li divide in vecchi e recenti (`dividi_cronologia`, taglio su un `HumanMessage`), manda i vecchi come testo (`trascrivi`) al riassuntore senza strumenti e sostituisce la cronologia; log INFO | `{}` oppure `{"messages": [RemoveMessage(REMOVE_ALL_MESSAGES), riassunto, *recenti]}` |
+| `llm` | invia `[prompt di sistema + riassunto] + finestra_contesto(messages)` al modello, che ha già lo strumento collegato (`bind_tools`) | `{"messages": [AIMessage]}` |
 | `strumenti` | esegue **ogni** tool_call dell'ultimo messaggio; scrive un log INFO per ciascuna; uno strumento sconosciuto, argomenti sbagliati o argomenti che non sono JSON valido (le `invalid_tool_calls` di LangChain) diventano un testo d'errore, non un'eccezione | `{"messages": [ToolMessage, ...], "passi_strumento": passi + 1}` |
 | `limite` | risponde «Non eseguito» a ogni tool_call rimasta in sospeso (altrimenti la cronologia non sarebbe valida per l'API) e aggiunge il messaggio per l'utente; log WARNING | `{"messages": [ToolMessage, ..., AIMessage]}` |
 
@@ -132,10 +139,30 @@ Con il nodo `limite` non dovrebbe mai scattare; se scatta, il client mostra un e
 Nelle prove reali `google/gemma-4-e2b` chiama `ora_corrente` con `{}` per «Che ore sono?» (quindi
 vale il default `Europe/Rome`) e con `{'fuso_orario': 'Asia/Tokyo'}` per «E a Tokyo?».
 
+## Compattazione della cronologia (nodo `compatta`)
+
+- Scatta all'inizio del turno quando la cronologia supera `MAX_MESSAGGI_CONTESTO` (default 20).
+- Restano gli ultimi `MESSAGGI_DA_TENERE` messaggi (default 6), con l'inizio spostato in avanti fino
+  a un `HumanMessage`: una tool_call non viene mai separata dalla sua risposta.
+- I messaggi vecchi diventano un testo semplice (`Utente: ...`, `Assistente: ...`, `Strumento: ...`,
+  `Riassunto precedente: ...`) e vanno a un **riassuntore**: lo stesso modello ma **senza strumenti**
+  (`crea_riassuntore`), così non può chiedere l'ora invece di riassumere.
+- Il riassunto diventa un `SystemMessage` con `name="riassunto"` in testa alla cronologia. Per
+  sostituire la cronologia il nodo restituisce `RemoveMessage(id=REMOVE_ALL_MESSAGES)` seguito dai
+  messaggi da tenere: è il modo previsto da LangGraph per riscrivere una lista con `add_messages`.
+- Alla compattazione successiva il riassunto vecchio entra nel testo da riassumere: ce n'è sempre uno solo.
+- Il nodo `llm` unisce il riassunto al prompt di sistema: un solo messaggio di sistema in testa, perché
+  alcuni modelli non ne accettano altri.
+- Se LM Studio non risponde (`openai.APIError`) o il riassunto è vuoto: log WARNING, cronologia
+  lasciata intera; resta la finestra scorrevole qui sotto.
+- Prova reale: dopo cinque domande con soglia 6, `google/gemma-4-e2b` risponde ancora a «Come mi
+  chiamo?» grazie al riassunto. Il prompt del riassunto chiede di scrivere «l'utente si chiama ...»:
+  con un generico «Gabriele studia a Udine» il modello non capiva che si parlava di chi scrive.
+
 ## Contesto inviato al modello
 
-- Lo stato conserva tutta la cronologia; al modello arrivano solo gli ultimi `MAX_MESSAGGI_CONTESTO`
-  messaggi (default 20), tramite `finestra_contesto(messaggi, n)`.
+- Al modello arrivano al massimo gli ultimi `MAX_MESSAGGI_CONTESTO` messaggi (default 20), tramite
+  `finestra_contesto(messaggi, n)`. Con la compattazione attiva serve come rete di sicurezza.
 - La finestra parte sempre da un `HumanMessage`: così non comincia mai con un `ToolMessage` orfano o
   con una tool_call senza risposta.
 - Se l'ultimo turno da solo supera `n`, si tiene comunque tutto dall'ultimo `HumanMessage` in poi.
@@ -151,7 +178,9 @@ stampata.
 
 | Evento | Livello | Esempio |
 |---|---|---|
-| avvio | INFO | `avvio: modello=google/gemma-4-e2b server=http://localhost:1234/v1 max_passi=3 contesto=20` |
+| avvio | INFO | `avvio: modello=google/gemma-4-e2b server=http://localhost:1234/v1 max_passi=3 contesto=20 da_tenere=6` |
+| cronologia compattata | INFO | `compattati 16 messaggi, tenuti 5` |
+| riassunto non riuscito | WARNING | `riassunto non riuscito, cronologia lasciata intera: Connection error.` |
 | chiamata allo strumento | INFO | `strumento ora_corrente {'fuso_orario': 'Asia/Tokyo'} -> Fuso orario: Asia/Tokyo ...` |
 | fuso non valido, strumento sconosciuto | WARNING | `strumento ora_corrente: fuso 'Roma' non riconosciuto` |
 | limite raggiunto | WARNING | `limite di 3 passaggi raggiunto: 1 tool_call non eseguite` |

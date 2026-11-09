@@ -44,7 +44,8 @@ didattici (commentati) e il file di spiegazione.
 - MCP, RAG, workflow, altri strumenti oltre all'orologio.
 - Interfacce web o grafiche, servizi cloud, persistenza su disco della cronologia.
 - Streaming dei token (le risposte arrivano intere).
-- Riassunto della cronologia generato dal modello (nodo di compattazione con LLM).
+- ~~Riassunto della cronologia generato dal modello (nodo di compattazione con LLM).~~ Aggiunto il
+  2026-11-09: vedi `2026-11-09-nodo-compatta-design.md`.
 - Comandi speciali in chat oltre all'uscita.
 
 **Anti-obiettivi (sarebbe un fallimento anche se "funziona")**

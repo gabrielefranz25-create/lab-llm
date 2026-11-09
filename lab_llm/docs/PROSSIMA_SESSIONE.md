@@ -1,32 +1,21 @@
 # Prossima sessione
 
-## Stato al 2026-11-03
-- Specifica e piano **approvati**; **tutti i task (1–10) completati**.
-- 60 test automatici verdi + 3 prove reali verdi con `PROVA_REALE=1`. Docker verificato (build, rete
-  container→LM Studio, chat con input via pipe).
+## Stato al 2026-11-09
+- Lezione 4 **completata**: piano del 26/10 (task 1–10) e aggiunta del nodo `compatta`
+  (specifica e piano `docs/superpowers/*/2026-11-09-nodo-compatta*.md`), richiesto dagli appunti
+  del docente («nodi compact»).
+- 71 test automatici verdi + 4 prove reali con `PROVA_REALE=1` (compresa la compattazione con
+  `google/gemma-4-e2b`). Docker verificato (build, rete container→LM Studio, chat con input via pipe).
 - Documentazione: `README.md`, `docs/COME_FUNZIONA.md`, `docs/GUIDA_DOCKER.md`,
   `docs/GUIDA_PASSO_PASSO.md`.
-- Revisione finale indipendente fatta: 2 problemi importanti corretti (tool_call con argomenti non
-  JSON, Ctrl+C durante l'attesa del modello).
-- Resta da provare: `docker compose run --rm assistente` con la tty interattiva nel tuo terminale.
-- Branch `dev`, commit locali non ancora inviati con push.
+- Resta da provare a mano: `docker compose run --rm assistente` con la tty interattiva.
+- Branch `dev`; la chiusura della lezione è il merge in `main` con il tag `lezione-4`.
+
+## Lezione successiva
+- Materiale: `materiali/LLM_Lez_5.pdf`.
+- Si parte con brainstorming → specifica → piano in `docs/superpowers/`, come per la lezione 4.
 
 ## Prima di iniziare
 - Aprire Claude Code nella cartella `repo-lab-llm_l4` (oppure `lab_llm`).
-- Avere LM Studio acceso con `google/gemma-4-e2b` caricato (serve dal Task 6).
-- Avviare Docker Desktop (serve dal Task 8).
-
-## Prompt da incollare
-```
-Riprendiamo il progetto in lab_llm/ seguendo lab_llm/CLAUDE.md.
-Leggi la specifica approvata lab_llm/docs/superpowers/specs/2026-10-26-assistente-orologio-design.md
-e il piano lab_llm/docs/superpowers/plans/2026-10-26-assistente-orologio.md.
-Ho riletto il piano: [lo approvo / vorrei cambiare: ...].
-Esegui il piano in modalità Native con superpowers:executing-plans, partendo dal primo task non
-completato, un task alla volta, con verifica e commit a ogni task (push solo su mia richiesta).
-Spunta le caselle - [x] nel piano man mano.
-Ricordami di pulire o riavviare la sessione ai punti di pausa (dopo i task 3, 6 e 8).
-```
-
-## Per le sessioni successive
-Basta sostituire la penultima riga del prompt con: «Continua dal primo task non completato del piano.»
+- Avere LM Studio acceso con `google/gemma-4-e2b` caricato.
+- Avviare Docker Desktop se servono le prove in container.

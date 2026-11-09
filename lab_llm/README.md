@@ -3,7 +3,8 @@
 Chat da terminale in Python che usa un grafo LangGraph esplicito per parlare con un modello servito da
 **LM Studio** sull'host. Il modello può chiedere l'ora con lo strumento `ora_corrente`, che il
 programma esegue davvero e che indica sempre il fuso orario (predefinito `Europe/Rome`).
-La cronologia resta in memoria per la durata della sessione: non viene salvata.
+La cronologia resta in memoria per la durata della sessione: non viene salvata. Quando diventa lunga,
+il nodo `compatta` la fa riassumere al modello e tiene solo il riassunto e gli ultimi messaggi.
 
 Come funziona dentro (grafo, stato, nodi, strumento, log): [docs/COME_FUNZIONA.md](docs/COME_FUNZIONA.md).
 Docker su Windows e risoluzione dei problemi: [docs/GUIDA_DOCKER.md](docs/GUIDA_DOCKER.md).
@@ -48,7 +49,8 @@ Invoke-RestMethod http://localhost:1234/v1/models | Select-Object -ExpandPropert
 | `LM_MODEL` | sì | — | l'`id` restituito da `/v1/models`, per esempio `google/gemma-4-e2b` |
 | `FUSO_ORARIO_PREDEFINITO` | no | `Europe/Rome` | nome IANA, validato all'avvio |
 | `MAX_PASSI_STRUMENTO` | no | `3` | giri di strumento per domanda, intero ≥ 1 |
-| `MAX_MESSAGGI_CONTESTO` | no | `20` | messaggi della cronologia inviati al modello, intero ≥ 2 |
+| `MAX_MESSAGGI_CONTESTO` | no | `20` | oltre questa soglia la cronologia viene riassunta; anche massimo di messaggi inviati al modello, intero ≥ 2 |
+| `MESSAGGI_DA_TENERE` | no | `6` | messaggi recenti tenuti accanto al riassunto, intero ≥ 2 e < `MAX_MESSAGGI_CONTESTO` |
 | `LM_TIMEOUT` | no | `60` | secondi di attesa per una risposta |
 | `LOG_LEVEL` | no | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 | `PROVA_REALE` | no | — | solo per i test con LM Studio vero (vedi sotto) |
