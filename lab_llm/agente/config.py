@@ -9,6 +9,11 @@ from dotenv import load_dotenv
 
 LIVELLI_LOG = ("DEBUG", "INFO", "WARNING", "ERROR")
 SERVER_MCP_NOTI = ("meteo", "note")
+# Ambito dell'agente usato dal router se AMBITO_AGENTE è assente o vuota.
+AMBITO_PREDEFINITO = (
+    "data e ora attuali in qualsiasi fuso orario, meteo attuale e previsioni, note personali "
+    "dell'utente (aggiungere, elencare, eliminare), saluti e domande sull'assistente stesso"
+)
 
 
 class ErroreConfigurazione(Exception):
@@ -29,6 +34,7 @@ class Config:
     meteo_timeout: float
     note_db: str
     server_mcp: tuple[str, ...]
+    ambito: str
 
 
 def _leggi(ambiente: Mapping[str, str], nome: str, default: str | None = None) -> str:
@@ -128,4 +134,5 @@ def carica_config(ambiente: Mapping[str, str] | None = None) -> Config:
         meteo_timeout=meteo_timeout,
         note_db=_leggi(ambiente, "NOTE_DB", "dati/note.sqlite3"),
         server_mcp=_elenco_server(ambiente),
+        ambito=_leggi(ambiente, "AMBITO_AGENTE", AMBITO_PREDEFINITO),
     )

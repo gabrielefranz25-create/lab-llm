@@ -2,7 +2,7 @@
 
 import pytest
 
-from agente.config import ErroreConfigurazione, carica_config
+from agente.config import AMBITO_PREDEFINITO, ErroreConfigurazione, carica_config
 
 MINIMO = {"LM_BASE_URL": "http://h:1/v1", "LM_MODEL": "m"}
 
@@ -91,3 +91,18 @@ def test_timeout_mcp_troppo_basso():
         carica_config({**MINIMO, "MCP_TIMEOUT": "15", "METEO_TIMEOUT": "10"})
     config = carica_config({**MINIMO, "MCP_TIMEOUT": "21", "METEO_TIMEOUT": "10"})
     assert config.mcp_timeout == 21.0
+
+
+def test_ambito_predefinito():
+    config = carica_config(MINIMO)
+    assert config.ambito == AMBITO_PREDEFINITO
+    assert "meteo" in config.ambito
+
+
+def test_ambito_personalizzato():
+    config = carica_config({**MINIMO, "AMBITO_AGENTE": "  solo il meteo  "})
+    assert config.ambito == "solo il meteo"
+
+
+def test_ambito_vuoto_usa_il_predefinito():
+    assert carica_config({**MINIMO, "AMBITO_AGENTE": " "}).ambito == AMBITO_PREDEFINITO
