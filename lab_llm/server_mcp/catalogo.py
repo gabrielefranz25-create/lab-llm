@@ -13,6 +13,9 @@ logger = logging.getLogger(__name__)
 
 PERCORSO_CORSI = Path(__file__).resolve().parent / "risorse" / "corsi.json"
 RISULTATI_MAX = 10
+# Parole che il modello può copiare dalla domanda ma che non identificano un corso.
+PAROLE_IGNORATE = {"corso", "corsi", "a", "di", "su", "in", "da", "per", "con", "il", "lo", "la", "i", "gli",
+                   "le", "del", "della", "dei", "che", "ci", "sono", "quali"}
 
 
 class ErroreCatalogo(Exception):
@@ -29,8 +32,11 @@ def _testo_ricercabile(corso: dict) -> str:
 
 
 def cerca(corsi: list[dict], testo: str, max_risultati: int) -> list[dict]:
-    """Corsi che contengono tutte le parole del testo, nell'ordine del catalogo."""
-    parole = (testo or "").lower().split()
+    """Corsi che contengono tutte le parole significative del testo, nell'ordine del catalogo.
+
+    Si ignorano le parole di PAROLE_IGNORATE («corsi», «a», «di», «su», …).
+    """
+    parole = [p for p in (testo or "").lower().split() if p not in PAROLE_IGNORATE]
     if not parole:
         raise ErroreCatalogo("testo di ricerca mancante")
     if not 1 <= max_risultati <= RISULTATI_MAX:
@@ -77,7 +83,7 @@ def _esegui(calcolo, *argomenti) -> str:
 
 @mcp.tool
 def cerca_corsi(testo: str, max_risultati: int = 5) -> str:
-    """Cerca nel catalogo dei corsi per parole (argomento, titolo, sede o codice) e restituisce l'elenco di codice, titolo e sede. Da usare per sapere quali corsi ci sono, per esempio "corsi a Udine" o "corsi su Docker". max_risultati da 1 a 10."""
+    """Cerca nel catalogo dei corsi per parole (argomento, titolo, sede o codice) e restituisce l'elenco di codice, titolo e sede. Da usare per sapere quali corsi ci sono. testo: solo parole chiave, per esempio "Udine" o "Docker". max_risultati da 1 a 10."""
     return _esegui(descrivi_ricerca, testo, max_risultati)
 
 

@@ -81,7 +81,10 @@ def converti(valore: float, da: str, a: str) -> tuple[float, str]:
             raise ErroreUnita(f"{valore:g} {simbolo_da} è sotto lo zero assoluto")
         return TEMPERATURE[simbolo_a][1](kelvin), grandezza_da
     fattori = FATTORI[grandezza_da]
-    return valore * fattori[simbolo_da] / fattori[simbolo_a], grandezza_da
+    risultato = valore * fattori[simbolo_da] / fattori[simbolo_a]
+    if not math.isfinite(risultato):
+        raise ErroreUnita("risultato fuori scala: valore troppo grande per questa conversione")
+    return risultato, grandezza_da
 
 
 def descrivi_conversione(valore: float, da: str, a: str) -> str:

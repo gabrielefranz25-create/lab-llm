@@ -6,8 +6,9 @@ import os
 import re
 import sys
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -46,11 +47,17 @@ def carica_festivita(percorso: Path = PERCORSO_FESTIVITA) -> Festivita:
     return Festivita(dict(dati["fisse"]), {date.fromisoformat(d): n for d, n in dati["mobili"].items()})
 
 
+def oggi_locale() -> date:
+    """Data di oggi nel fuso FUSO_ORARIO (lo stesso dell'orologio dell'agente), non in quello del processo:
+    in Docker il processo è in UTC e tra mezzanotte e le 2 «oggi» sarebbe ancora ieri."""
+    return datetime.now(ZoneInfo(os.environ.get("FUSO_ORARIO", "Europe/Rome"))).date()
+
+
 def leggi_data(testo: str, oggi: date | None = None) -> date:
-    """Data ISO `AAAA-MM-GG` oppure `oggi` (data locale, o quella passata dai test)."""
+    """Data ISO `AAAA-MM-GG` oppure `oggi` (nel fuso configurato, o la data passata dai test)."""
     pulito = (testo or "").strip()
     if pulito.lower() == "oggi":
-        return oggi or date.today()
+        return oggi or oggi_locale()
     try:
         if not FORMATO_ISO.fullmatch(pulito):
             raise ValueError

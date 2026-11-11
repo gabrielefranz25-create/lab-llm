@@ -102,3 +102,18 @@ def test_chiamata_cerca_corsi():
 def test_chiamata_con_errore_diventa_tool_error():
     with pytest.raises(ToolError, match="nessun corso con codice"):
         _esegui(lambda c: c.call_tool("dettaglio_corso", {"codice": "XX-99"}))
+
+
+def test_parole_di_riempimento_ignorate(corsi):
+    # Il modello può passare la frase così com'è: «corsi a Udine» deve trovare i corsi di Udine.
+    assert [c["codice"] for c in cerca(corsi, "corsi a Udine", 10)] == ["AA-2"]
+    assert [c["codice"] for c in cerca(corsi, "corso su Docker", 10)] == ["BB-1"]
+
+
+def test_solo_parole_di_riempimento(corsi):
+    with pytest.raises(ErroreCatalogo, match="testo di ricerca mancante"):
+        cerca(corsi, "corsi di", 5)
+
+
+def test_sigla_breve_non_viene_scartata():
+    assert [c["codice"] for c in cerca(carica_corsi(), "corsi di IA", 10)][:1] == ["IA-101"]

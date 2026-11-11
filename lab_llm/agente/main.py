@@ -34,8 +34,10 @@ def server_da_config(config: Config) -> list[ServerMCP]:
         "meteo": ServerMCP("meteo", ("-m", "server_mcp.meteo"),
                            {**comuni, "METEO_TIMEOUT": str(config.meteo_timeout)}),
         "note": ServerMCP("note", ("-m", "server_mcp.note"), {**comuni, "NOTE_DB": config.note_db}),
+        "scadenze": ServerMCP("scadenze", ("-m", "server_mcp.scadenze"),
+                              {**comuni, "FUSO_ORARIO": config.fuso_orario_predefinito}),
         **{nome: ServerMCP(nome, ("-m", f"server_mcp.{nome}"), comuni)
-           for nome in ("unita", "calcolatrice", "scadenze", "catalogo")},
+           for nome in ("unita", "calcolatrice", "catalogo")},
     }
     return [disponibili[nome] for nome in config.server_mcp]
 

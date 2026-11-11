@@ -115,3 +115,13 @@ def test_chiamata_giorni_tra():
 def test_chiamata_con_errore_diventa_tool_error():
     with pytest.raises(ToolError, match="data non valida"):
         _esegui(lambda c: c.call_tool("aggiungi_giorni", {"data": "31/12/2026", "giorni": 3}))
+
+
+def test_oggi_segue_il_fuso_configurato(monkeypatch):
+    # Kiritimati (UTC+14) e Pago Pago (UTC-11) sono sempre in due date diverse.
+    monkeypatch.setenv("FUSO_ORARIO", "Pacific/Kiritimati")
+    avanti = scadenze.oggi_locale()
+    monkeypatch.setenv("FUSO_ORARIO", "Pacific/Pago_Pago")
+    indietro = scadenze.oggi_locale()
+    assert (avanti - indietro).days == 1
+    assert leggi_data("oggi") == indietro

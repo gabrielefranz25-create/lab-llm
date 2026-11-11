@@ -176,6 +176,11 @@ def test_server_da_config_tutti_i_server():
         assert server.env["LOG_LEVEL"] == "INFO" and server.env["FASTMCP_LOG_LEVEL"] == "WARNING"
 
 
+def test_server_da_config_scadenze_riceve_il_fuso():
+    (scadenze,) = server_da_config(_config(SERVER_MCP="scadenze", FUSO_ORARIO_PREDEFINITO="Asia/Tokyo"))
+    assert scadenze.env["FUSO_ORARIO"] == "Asia/Tokyo"
+
+
 def test_server_da_config_log_server_e_framework():
     (meteo,) = server_da_config(_config(SERVER_MCP="meteo", LOG_LEVEL="DEBUG"))
     assert meteo.env["LOG_LEVEL"] == "DEBUG"  # i log del nostro server seguono l'agente

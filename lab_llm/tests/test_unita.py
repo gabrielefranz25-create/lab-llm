@@ -93,3 +93,8 @@ def test_chiamata_converti_unita():
 def test_chiamata_con_errore_diventa_tool_error():
     with pytest.raises(ToolError, match="impossibile convertire"):
         _esegui(lambda c: c.call_tool("converti_unita", {"valore": 1, "da": "km", "a": "kg"}))
+
+
+def test_risultato_non_finito_non_e_un_successo():
+    with pytest.raises(ErroreUnita, match="risultato fuori scala"):
+        converti(1e308, "km", "mm")
