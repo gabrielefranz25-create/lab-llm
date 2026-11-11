@@ -161,11 +161,19 @@ def test_server_da_config():
 
 
 def test_server_da_config_note_in_ordine():
-    meteo, note = server_da_config(_config(NOTE_DB="x/n.sqlite3"))
+    meteo, note = server_da_config(_config(SERVER_MCP="meteo,note", NOTE_DB="x/n.sqlite3"))
     assert (meteo.nome, note.nome) == ("meteo", "note")
     assert note.argomenti == ("-m", "server_mcp.note")
     assert note.env["NOTE_DB"] == "x/n.sqlite3"
     assert note.env["LOG_LEVEL"] == "INFO" and note.env["FASTMCP_LOG_LEVEL"] == "WARNING"
+
+
+def test_server_da_config_tutti_i_server():
+    servers = server_da_config(_config())
+    assert [s.nome for s in servers] == ["meteo", "note", "unita", "calcolatrice", "scadenze", "catalogo"]
+    for server in servers:
+        assert server.argomenti == ("-m", f"server_mcp.{server.nome}")
+        assert server.env["LOG_LEVEL"] == "INFO" and server.env["FASTMCP_LOG_LEVEL"] == "WARNING"
 
 
 def test_server_da_config_log_server_e_framework():

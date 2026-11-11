@@ -8,12 +8,27 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from dotenv import load_dotenv
 
 LIVELLI_LOG = ("DEBUG", "INFO", "WARNING", "ERROR")
-SERVER_MCP_NOTI = ("meteo", "note")
-# Ambito dell'agente usato dal router se AMBITO_AGENTE è assente o vuota.
-AMBITO_PREDEFINITO = (
-    "data e ora attuali in qualsiasi fuso orario, meteo attuale e previsioni, note personali "
-    "dell'utente (aggiungere, elencare, eliminare), saluti e domande sull'assistente stesso"
-)
+SERVER_MCP_NOTI = ("meteo", "note", "unita", "calcolatrice", "scadenze", "catalogo")
+# Ambito dell'agente usato dal router se AMBITO_AGENTE è assente o vuota: l'orologio e i saluti ci
+# sono sempre, poi una frase per ogni server MCP attivo.
+AMBITO_INIZIO = "data e ora attuali in qualsiasi fuso orario"
+AMBITO_FINE = "saluti e domande sull'assistente stesso"
+AMBITO_PER_SERVER = {
+    "meteo": "meteo attuale e previsioni",
+    "note": "note personali dell'utente (aggiungere, elencare, eliminare)",
+    "unita": "conversioni tra unità di misura",
+    "calcolatrice": "calcoli aritmetici",
+    "scadenze": "giorni, giorni lavorativi e scadenze tra date",
+    "catalogo": "catalogo dei corsi (ricerca e dettagli dei corsi)",
+}
+
+
+def ambito_predefinito(server: tuple[str, ...]) -> str:
+    """Ambito del router per i server MCP indicati."""
+    return ", ".join([AMBITO_INIZIO, *(AMBITO_PER_SERVER[s] for s in server), AMBITO_FINE])
+
+
+AMBITO_PREDEFINITO = ambito_predefinito(SERVER_MCP_NOTI)
 
 
 class ErroreConfigurazione(Exception):
@@ -121,6 +136,7 @@ def carica_config(ambiente: Mapping[str, str] | None = None) -> Config:
         raise ErroreConfigurazione(
             f"MCP_TIMEOUT ({mcp_timeout:g}) deve essere maggiore del doppio di METEO_TIMEOUT ({meteo_timeout:g})."
         )
+    server_mcp = _elenco_server(ambiente)
     return Config(
         lm_base_url=_leggi(ambiente, "LM_BASE_URL"),
         lm_model=_leggi(ambiente, "LM_MODEL"),
@@ -133,6 +149,6 @@ def carica_config(ambiente: Mapping[str, str] | None = None) -> Config:
         mcp_timeout=mcp_timeout,
         meteo_timeout=meteo_timeout,
         note_db=_leggi(ambiente, "NOTE_DB", "dati/note.sqlite3"),
-        server_mcp=_elenco_server(ambiente),
-        ambito=_leggi(ambiente, "AMBITO_AGENTE", AMBITO_PREDEFINITO),
+        server_mcp=server_mcp,
+        ambito=_leggi(ambiente, "AMBITO_AGENTE", ambito_predefinito(server_mcp)),
     )

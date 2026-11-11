@@ -2,7 +2,8 @@
 
 import pytest
 
-from agente.config import AMBITO_PREDEFINITO, ErroreConfigurazione, carica_config
+from agente.config import (AMBITO_PER_SERVER, AMBITO_PREDEFINITO, SERVER_MCP_NOTI, ErroreConfigurazione,
+                           ambito_predefinito, carica_config)
 
 MINIMO = {"LM_BASE_URL": "http://h:1/v1", "LM_MODEL": "m"}
 
@@ -69,7 +70,17 @@ def test_valori_predefiniti_mcp():
     assert config.mcp_timeout == 30.0
     assert config.meteo_timeout == 10.0
     assert config.note_db == "dati/note.sqlite3"
-    assert config.server_mcp == ("meteo", "note")
+    assert config.server_mcp == SERVER_MCP_NOTI
+
+
+def test_server_mcp_noti():
+    assert SERVER_MCP_NOTI == ("meteo", "note", "unita", "calcolatrice", "scadenze", "catalogo")
+    assert set(AMBITO_PER_SERVER) == set(SERVER_MCP_NOTI)
+
+
+def test_server_mcp_nuovi_nomi():
+    config = carica_config({**MINIMO, "SERVER_MCP": "calcolatrice, catalogo,unita,scadenze"})
+    assert config.server_mcp == ("calcolatrice", "catalogo", "unita", "scadenze")
 
 
 def test_server_mcp_vuoto_non_avvia_nulla():
@@ -106,3 +117,26 @@ def test_ambito_personalizzato():
 
 def test_ambito_vuoto_usa_il_predefinito():
     assert carica_config({**MINIMO, "AMBITO_AGENTE": " "}).ambito == AMBITO_PREDEFINITO
+
+
+def test_ambito_composto_dai_server_attivi():
+    config = carica_config({**MINIMO, "SERVER_MCP": "calcolatrice"})
+    assert config.ambito == ambito_predefinito(("calcolatrice",))
+    assert AMBITO_PER_SERVER["calcolatrice"] in config.ambito
+    assert AMBITO_PER_SERVER["meteo"] not in config.ambito
+    assert "data e ora" in config.ambito and "saluti" in config.ambito
+
+
+def test_ambito_senza_server():
+    ambito = carica_config({**MINIMO, "SERVER_MCP": ""}).ambito
+    assert "data e ora" in ambito
+    assert not any(frase in ambito for frase in AMBITO_PER_SERVER.values())
+
+
+def test_ambito_predefinito_contiene_tutti_i_server():
+    assert all(frase in AMBITO_PREDEFINITO for frase in AMBITO_PER_SERVER.values())
+
+
+def test_ambito_personalizzato_vince_sui_server():
+    config = carica_config({**MINIMO, "SERVER_MCP": "calcolatrice", "AMBITO_AGENTE": "solo conti"})
+    assert config.ambito == "solo conti"
