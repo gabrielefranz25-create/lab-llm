@@ -211,3 +211,25 @@ def test_prompt_e_finestra_al_modello():
 def test_grafo_ha_i_nodi_attesi():
     nodi = _grafo(ModelloFinto([])).get_graph().nodes
     assert {"llm", "strumenti", "limite"} <= set(nodi)
+
+
+def _calcola_finto():
+    return StructuredTool.from_function(func=lambda espressione: "ok", name="calcola",
+                                        description="Calcola un'espressione.")
+
+
+def _prompt_inviato(strumenti) -> str:
+    modello = ModelloFinto([AIMessage("ok")])
+    _esegui(costruisci_grafo(modello, strumenti, max_passi=3, max_messaggi_contesto=20,
+                             fuso_predefinito="Europe/Rome"))
+    return modello.chiamate[0][0].content
+
+
+def test_istruzione_calcoli_solo_con_calcola_attivo():
+    # Prove reali del 2026-11-11: senza questa riga «15 per 12» diventava "15/12"; con la riga ma
+    # senza lo strumento `calcola`, «Che ore sono?» non chiamava più `ora_corrente`.
+    orologio = crea_ora_corrente(orologio=lambda: INVERNO)
+    con_calcola = _prompt_inviato([orologio, _calcola_finto()])
+    assert "`calcola`" in con_calcola and "«per»" in con_calcola and "moltiplicazione" in con_calcola
+    assert "calcola" not in _prompt_inviato([orologio])
+    assert "calcola" not in PROMPT_SISTEMA

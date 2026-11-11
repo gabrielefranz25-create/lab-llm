@@ -85,3 +85,9 @@ def test_chiamata_calcola():
 def test_chiamata_con_errore_diventa_tool_error():
     with pytest.raises(ToolError, match="chiamata di funzione"):
         _esegui(lambda c: c.call_tool("calcola", {"espressione": "__import__('os')"}))
+
+
+def test_descrizione_traduce_le_parole_in_operatori():
+    # Prova reale del 2026-11-11: gemma-4-e2b ha tradotto «15 per 12» in "15/12".
+    (strumento,) = _esegui(lambda c: c.list_tools())
+    assert '"per" = *' in strumento.description and '"diviso" = /' in strumento.description

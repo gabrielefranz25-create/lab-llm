@@ -34,6 +34,13 @@ PROMPT_SISTEMA = (
     "Se uno strumento restituisce un errore, riferiscilo all'utente senza inventare un risultato."
 )
 
+# Istruzioni aggiunte al prompt solo se lo strumento è collegato: citare uno strumento assente confonde
+# il modello (prova reale: con questa riga e senza `calcola`, «Che ore sono?» non chiamava `ora_corrente`).
+ISTRUZIONI_PER_STRUMENTO = {
+    "calcola": "Per i conti usa `calcola` e non farli a mente. In italiano «per» e «x» indicano la "
+               "moltiplicazione («15 per 12» = 15*12), «diviso» la divisione (/).",
+}
+
 MESSAGGIO_LIMITE = (
     "Ho raggiunto il limite di {n} richieste allo strumento per questa domanda. "
     "Prova a riformularla in modo più semplice."
@@ -174,7 +181,9 @@ def costruisci_grafo(modello: Runnable, strumenti: list[BaseTool], *, max_passi:
     compatta non fa nulla e il contesto è controllato solo dalla finestra scorrevole. Senza router
     ogni domanda passa all'agente. Il router restituisce un DecisioneRouter.
     """
-    prompt = PROMPT_SISTEMA.format(fuso=fuso_predefinito)
+    prompt = "\n".join([PROMPT_SISTEMA.format(fuso=fuso_predefinito),
+                        *(testo for nome, testo in ISTRUZIONI_PER_STRUMENTO.items()
+                          if any(s.name == nome for s in strumenti))])
     prompt_router = PROMPT_ROUTER.format(ambito=ambito)
     per_nome = {s.name: s for s in strumenti}
 

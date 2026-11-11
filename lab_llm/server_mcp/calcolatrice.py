@@ -93,7 +93,7 @@ mcp = FastMCP("Calcolatrice")
 
 @mcp.tool
 def calcola(espressione: str) -> str:
-    """Calcola un'espressione aritmetica con numeri, + - * / // % ** (o ^) e parentesi, per esempio "17*23" o "(2+3)/4". Da usare per qualsiasi conto invece di farlo a mente. Non accetta variabili né funzioni."""
+    """Calcola un'espressione aritmetica con numeri, + - * / // % ** (o ^) e parentesi, per esempio "17*23" o "(2+3)/4". Traduci le parole in simboli: "per" = *, "diviso" = /, "più" = +, "meno" = -. Da usare per qualsiasi conto invece di farlo a mente. Non accetta variabili né funzioni."""
     try:
         valore = valuta(espressione)
     except ErroreCalcolo as errore:
