@@ -109,7 +109,9 @@ Spunta le caselle - [x] nel piano man mano.
 5. `feat(config)`: nuovi nomi in `SERVER_MCP` (default tutti) e ambito del router composto dai server attivi.
 6. `test(reale)`: `tests/reale/test_proposte_reale.py`.
 7. `docs`: guide aggiornate.
-- Esiti: `python -m pytest` → 245 passati, 17 skipped; discovery stdio dei sei server → 11 tool MCP.
+8. Revisione finale (agente revisore): `fix(strumenti)` per la ricerca con parole vuote, «oggi» nel fuso
+   dell'agente e il risultato infinito del convertitore; i rilievi minori sono rimandati.
+- Esiti: `python -m pytest` → 251 passati, 17 skipped; discovery stdio dei sei server → 11 tool MCP.
   **Da fare**: prove reali (LM Studio spento) e `docker compose build` (Docker Desktop non partiva).
 - Escluse di proposito: resource del catalogo (lezione 6, step 4) e prompt MCP (step 5).
 

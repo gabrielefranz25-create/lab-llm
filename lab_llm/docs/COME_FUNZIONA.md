@@ -264,12 +264,14 @@ La variabile `FASTMCP_LOG_LEVEL=WARNING`, passata ai sottoprocessi, tace il bann
   chiamate, attributi e confronti vengono rifiutati con un messaggio che dice quale elemento non va.
   Limiti su lunghezza, esponente e grandezza del risultato. **Mai `eval`.**
 - **scadenze** (`server_mcp/scadenze.py`): `giorni_tra(data_inizio, data_fine)` e
-  `aggiungi_giorni(data, giorni, solo_lavorativi=False)`, date `AAAA-MM-GG` o `oggi`. Fine settimana e
+  `aggiungi_giorni(data, giorni, solo_lavorativi=False)`, date `AAAA-MM-GG` o `oggi` (calcolato nel fuso
+  `FUSO_ORARIO_PREDEFINITO`, che `main.py` passa al server come `FUSO_ORARIO`: così concorda con l'orologio). Fine settimana e
   festività (`server_mcp/risorse/festivita.json`: fisse e Lunedì dell'Angelo 2024–2030) non sono
   lavorativi; se un anno non ha le festività mobili nel file, il risultato lo dice. Risultato «non normativo».
 - **catalogo** (`server_mcp/catalogo.py`): due tool sullo stesso file `server_mcp/risorse/corsi.json`
   (corsi inventati): `cerca_corsi(testo, max_risultati=5)` cerca tutte le parole in codice, titolo, sede e
-  descrizione; `dettaglio_corso(codice)` dà tutti i campi. Nessun risultato = lista vuota dichiarata.
+  descrizione, ignorando parole come «corsi», «a», «di» che il modello copia dalla domanda;
+  `dettaglio_corso(codice)` dà tutti i campi. Nessun risultato = lista vuota dichiarata.
 
 ### Che cosa fa il prompt di sistema
 

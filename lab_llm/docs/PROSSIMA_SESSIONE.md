@@ -20,7 +20,7 @@
 ## Stato al 2026-11-11 (completamento della lezione 5, blocco A)
 - Branch `feat/strumenti-proposte` (non ancora unito in `dev`): server `unita`, `calcolatrice`,
   `scadenze`, `catalogo` e ambito del router composto dai server attivi. `python -m pytest` →
-  245 passed, 17 skipped.
+  251 passed, 17 skipped.
 - **Prima del merge**: prove reali con LM Studio acceso
   (`$env:PROVA_REALE="1"; python -m pytest tests/reale/test_proposte_reale.py -v -o log_cli=true --log-cli-level=INFO`),
   `docker compose build` + `docker compose run --rm assistente` con una domanda per server, chat a mano
