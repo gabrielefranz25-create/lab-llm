@@ -4,7 +4,7 @@ Spiegazione del grafo LangGraph dell'agente e degli strumenti che usa.
 **Da aggiornare a ogni modifica del grafo, dello stato o degli strumenti.**
 Per i dettagli di funzionamento vedi anche `COME_FUNZIONA.md`.
 
-Stato al 2026-11-09: lezione 6, step 1 (router) sul branch `feat/router`.
+Stato al 2026-11-11: lezione 6 step 1 (router) in `dev`; server delle proposte della lezione 5 sul branch `feat/strumenti-proposte`.
 
 ## 1. Il grafo di oggi
 
@@ -71,6 +71,16 @@ Il modello vede tutti gli strumenti allo stesso modo (nome, descrizione, schema 
 | `aggiungi_nota(testo)` | MCP `note` | `server_mcp/note.py` | Salva una nota su SQLite (`NOTE_DB`). |
 | `elenca_note(limite=10)` | MCP `note` | `server_mcp/note.py` | Elenca le note. |
 | `elimina_nota(id_nota)` | MCP `note` | `server_mcp/note.py` | Elimina una nota per ID. |
+| `converti_unita(valore, da, a)` | MCP `unita` | `server_mcp/unita.py` | Conversione tra unità della stessa grandezza (elenco chiuso). |
+| `calcola(espressione)` | MCP `calcolatrice` | `server_mcp/calcolatrice.py` | Aritmetica con `ast`, senza `eval`; rifiuta tutto il resto. |
+| `giorni_tra(data_inizio, data_fine)` | MCP `scadenze` | `server_mcp/scadenze.py` | Giorni di calendario e lavorativi tra due date. |
+| `aggiungi_giorni(data, giorni, solo_lavorativi=False)` | MCP `scadenze` | `server_mcp/scadenze.py` | Data spostata di N giorni (anche solo lavorativi). |
+| `cerca_corsi(testo, max_risultati=5)` | MCP `catalogo` | `server_mcp/catalogo.py` | Ricerca per parole nel catalogo dei corsi. |
+| `dettaglio_corso(codice)` | MCP `catalogo` | `server_mcp/catalogo.py` | Tutti i campi di un corso dato il codice. |
+
+I server scelti in `SERVER_MCP` (default: tutti) decidono anche l'ambito predefinito del router:
+`ambito_predefinito` in `agente/config.py` unisce ora e saluti a una frase per ogni server attivo
+(`AMBITO_PER_SERVER`).
 
 ### Percorso di uno strumento MCP
 1. All'avvio, `main.py` apre `ConnessioneMCP` (`agente/mcp_ponte.py`), che lancia i server scelti in `SERVER_MCP` come sottoprocessi **stdio**.

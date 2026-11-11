@@ -8,7 +8,8 @@ La cartella del progetto è `lab_llm/`. Specifica e piano sono in `lab_llm/docs/
   `config` (variabili d'ambiente), `strumenti` (orologio), `graph` (stato, nodi, instradamento),
   `llm` (LM Studio), `client` (chat da terminale), `mcp_ponte` (ponte sincrono verso i server MCP),
   `main` (avvio).
-- `server_mcp/`: server MCP come processi separati (`meteo`, `note`); non dipendono da `agente/`.
+- `server_mcp/`: server MCP come processi separati (`meteo`, `note`, `unita`, `calcolatrice`, `scadenze`,
+  `catalogo`); dati in `server_mcp/risorse/` (non `dati/`, esclusa da Git); non dipendono da `agente/`.
 - `tests/`: test automatici senza modello; `tests/reale/`: prove con LM Studio vero.
 - `docs/`: `COME_FUNZIONA.md`, `GRAFO_E_STRUMENTI.md`, `PERCORSO_PROGETTO.md`, `GUIDA_DOCKER.md`,
   `GUIDA_PASSO_PASSO.md`, `PROSSIMA_SESSIONE.md`, specifica e piano.
@@ -30,7 +31,8 @@ Un'applicazione da terminale in Python che conversa con un modello locale e:
   cronologia); le note del server MCP `note` sono invece persistenti (SQLite, volume Docker `note`);
 - offre uno strumento orologio con fuso orario esplicito, richiesto dal modello tramite tool calling
   ed eseguito davvero dal programma;
-- usa strumenti MCP (meteo, note) scoperti dal catalogo dei server, mai descritti nell'agente;
+- usa strumenti MCP (meteo, note, unità, calcolatrice, scadenze, catalogo) scoperti dal catalogo dei
+  server, mai descritti nell'agente;
 - si avvia anche con Docker Compose.
 
 ## Confini

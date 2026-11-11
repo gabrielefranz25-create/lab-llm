@@ -17,6 +17,18 @@
   router `2 passed`; prova a mano con domanda in ambito, seguito «e domani?» e domanda fuori ambito.
 - Prossimo: step 2 (revisore). Il prompt di partenza è quello del PDF (vedi `docs/PERCORSO_PROGETTO.md`).
 
+## Stato al 2026-11-11 (completamento della lezione 5, blocco A)
+- Branch `feat/strumenti-proposte` (non ancora unito in `dev`): server `unita`, `calcolatrice`,
+  `scadenze`, `catalogo` e ambito del router composto dai server attivi. `python -m pytest` →
+  245 passed, 17 skipped.
+- **Prima del merge**: prove reali con LM Studio acceso
+  (`$env:PROVA_REALE="1"; python -m pytest tests/reale/test_proposte_reale.py -v -o log_cli=true --log-cli-level=INFO`),
+  `docker compose build` + `docker compose run --rm assistente` con una domanda per server, chat a mano
+  con `python -m agente`, revisione finale.
+- Tabella di marcia della lezione 5: dopo il blocco A, blocco B (tre varianti dell'orologio: locale,
+  FastAPI + wrapper HTTP, FastMCP, una attiva con `VARIANTE_OROLOGIO`) e blocco C (Streamable HTTP in
+  locale, catalogo identico a stdio). Poi si riprende la lezione 6 dallo step 2 (revisore).
+
 ## Lezione 6: evolvere l'agente
 Materiale: `materiali/LLM_Lez_6.pdf` e gli appunti `materiali/grafo, mcp, interfaccia ed architet.txt`,
 `materiali/altre info.txt`. Nove step, uno alla volta (tabella in `docs/PERCORSO_PROGETTO.md`):

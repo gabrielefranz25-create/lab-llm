@@ -4,7 +4,7 @@ Cosa è il progetto e tutti i passi fatti, in ordine, con skill, prompt e modali
 **Da aggiornare a ogni modifica del progetto** (nuovo step, nuova lezione, cambio di metodo).
 
 ## Il progetto in breve
-Un agente in Python che conversa con un modello locale (`google/gemma-4-e2b` in LM Studio) tramite un grafo LangGraph. Usa strumenti locali e MCP (orologio, meteo, note) e si avvia anche in Docker. Il codice è in `lab_llm/`; i materiali del docente sono in `materiali/` (fuori da Git); il codice della lezione 3 è in `archivio/`.
+Un agente in Python che conversa con un modello locale (`google/gemma-4-e2b` in LM Studio) tramite un grafo LangGraph. Usa strumenti locali e MCP (orologio, meteo, note, unità, calcolatrice, scadenze, catalogo) e si avvia anche in Docker. Il codice è in `lab_llm/`; i materiali del docente sono in `materiali/` (fuori da Git); il codice della lezione 3 è in `archivio/`.
 
 ## Metodo di lavoro (vale per ogni step)
 
@@ -91,6 +91,27 @@ Spunta le caselle - [x] nel piano man mano.
 7. `docs`: guide aggiornate. Esiti: 122 test passati, 6 prove reali MCP passate.
 8. Chiusura: merge `dev → main` e tag `lezione-5`.
 9. Creati `docs/GRAFO_E_STRUMENTI.md` e questo file, da aggiornare a ogni modifica.
+
+### Lezione 5, completamento (11/11): le altre proposte del blocco 5. Branch `feat/strumenti-proposte`
+- Prompt: «continuiamo il progetto, dimmi a che punto siamo e cosa dobbiamo fare; della lezione 5 dobbiamo
+  implementare anche gli altri task». Scelti con una domanda: le altre proposte del blocco 5, le tre
+  varianti dell'orologio e le estensioni della slide 29.
+- Skill e modalità: **plan mode** per lo stato e la tabella di marcia in tre blocchi (A proposte,
+  B tre varianti dell'orologio, C Streamable HTTP), approvata con ExitPlanMode; poi spec e piano del
+  blocco A approvati; esecuzione con `superpowers:executing-plans` (TDD, un commit per task, registro
+  in `.superpowers/sdd/`).
+- Specifica `specs/2026-11-11-strumenti-proposte-design.md` e piano `plans/2026-11-11-strumenti-proposte.md`.
+1. `feat(calcolatrice)`: `calcola` con `ast`, mai `eval`.
+2. `feat(unita)`: `converti_unita` su elenco chiuso con alias italiani.
+3. `feat(scadenze)`: `giorni_tra`, `aggiungi_giorni`, festività da `server_mcp/risorse/festivita.json`
+   (cartella `risorse/` e non `dati/`, che è esclusa da Git e da Docker).
+4. `feat(catalogo)`: `cerca_corsi` e `dettaglio_corso` sullo stesso `corsi.json`.
+5. `feat(config)`: nuovi nomi in `SERVER_MCP` (default tutti) e ambito del router composto dai server attivi.
+6. `test(reale)`: `tests/reale/test_proposte_reale.py`.
+7. `docs`: guide aggiornate.
+- Esiti: `python -m pytest` → 245 passati, 17 skipped; discovery stdio dei sei server → 11 tool MCP.
+  **Da fare**: prove reali (LM Studio spento) e `docker compose build` (Docker Desktop non partiva).
+- Escluse di proposito: resource del catalogo (lezione 6, step 4) e prompt MCP (step 5).
 
 ### Lezione 6: evolvere l'agente. In corso
 Materiale: `materiali/LLM_Lez_6.pdf`. Uno step alla volta, ciascuno con spec, piano, test, prova reale, README e commit.

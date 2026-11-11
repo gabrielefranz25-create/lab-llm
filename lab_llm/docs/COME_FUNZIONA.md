@@ -10,9 +10,10 @@
   programma esegue davvero. L'output indica sempre il fuso orario.
 - Una **cronologia di sessione** tenuta dal client in una lista: si perde all'uscita. Quando diventa
   lunga, il nodo `compatta` fa riassumere al modello i messaggi vecchi.
-- Due **server MCP** (lezione 5), `meteo` e `note`, avviati come sottoprocessi: i loro strumenti
-  (`meteo_attuale`, `previsioni_meteo`, `aggiungi_nota`, `elenca_note`, `elimina_nota`) vengono
-  scoperti dal catalogo e usati dal grafo come l'orologio. Le note sono salvate in SQLite e
+- Sei **server MCP** (lezione 5), `meteo`, `note`, `unita`, `calcolatrice`, `scadenze` e `catalogo`,
+  avviati come sottoprocessi: i loro strumenti (`meteo_attuale`, `previsioni_meteo`, `aggiungi_nota`,
+  `elenca_note`, `elimina_nota`, `converti_unita`, `calcola`, `giorni_tra`, `aggiungi_giorni`,
+  `cerca_corsi`, `dettaglio_corso`) vengono scoperti dal catalogo e usati dal grafo come l'orologio. Le note sono salvate in SQLite e
   **persistono**; la cronologia della chat no.
 - Avvio anche in **Docker Compose**, con LM Studio che resta sull'host.
 
@@ -46,7 +47,7 @@ main.py ──► config.py        variabili d'ambiente → Config (errori chiar
 
 - `graph.py` non importa `llm.py`: modello e strumenti gli arrivano da fuori. Così i test usano un
   modello finto, e nelle prossime lezioni si potranno aggiungere strumenti senza toccare il grafo.
-- I server MCP (`server_mcp/meteo.py`, `server_mcp/note.py`) sono **programmi a parte**, non moduli
+- I server MCP (`server_mcp/meteo.py`, `server_mcp/note.py` e gli altri) sono **programmi a parte**, non moduli
   dell'agente: l'agente li avvia con `python -m server_mcp.meteo` e ci parla via stdin/stdout.
 - `client.py` non sa nulla di LM Studio: conosce solo il grafo compilato e gli errori
   `openai.APIError` e `GraphRecursionError`, che trasforma in messaggi leggibili.
@@ -170,7 +171,7 @@ dentro l'agente. Tre ruoli:
 |---|---|---|
 | **host** | l'applicazione `python -m agente` (grafo + modello) | decide quali server usare e porta le richieste del modello |
 | **client** | l'oggetto `fastmcp.Client` dentro `agente/mcp_ponte.py` | una sessione con **un** server: chiede il catalogo, invia le chiamate |
-| **server** | `server_mcp/meteo.py`, `server_mcp/note.py` | processi separati che dichiarano i tool e li eseguono |
+| **server** | `server_mcp/*.py` (sei server) | processi separati che dichiarano i tool e li eseguono |
 
 Il trasporto è **stdio**: il client lancia il server come sottoprocesso (`sys.executable -m
 server_mcp.meteo`, con `cwd` la cartella `lab_llm/`) e scambia messaggi JSON-RPC su stdin/stdout. Per
@@ -243,7 +244,7 @@ WARNING e **prosegue**: gli altri strumenti restano disponibili e la chat si avv
 timeout vale `MCP_TIMEOUT` (per il server meteo, `METEO_TIMEOUT` vale per ogni richiesta HTTP).
 La variabile `FASTMCP_LOG_LEVEL=WARNING`, passata ai sottoprocessi, tace il banner del framework.
 
-### I due server
+### I server
 
 - **meteo** (`server_mcp/meteo.py`): `meteo_attuale(citta)` e `previsioni_meteo(citta, giorni=3)`,
   1–7 giorni. Chiama l'API di geocoding e poi quella delle previsioni di Open-Meteo (con `httpx`);
@@ -255,6 +256,20 @@ La variabile `FASTMCP_LOG_LEVEL=WARNING`, passata ai sottoprocessi, tace il bann
   i dati e lo dichiarano nella loro descrizione.
 - In entrambi la logica sta in funzioni e classi che non dipendono da MCP (`testo_meteo_attuale`,
   `ArchivioNote`), così si testano senza avviare nulla; il decoratore `@mcp.tool` le espone soltanto.
+- **unita** (`server_mcp/unita.py`): `converti_unita(valore, da, a)` su un elenco chiuso di unità per
+  grandezza (lunghezza, massa, volume, velocità, temperatura), con simboli o nomi italiani. Errore per
+  unità sconosciuta (con l'elenco delle ammesse), grandezze diverse e temperature sotto lo zero assoluto.
+- **calcolatrice** (`server_mcp/calcolatrice.py`): `calcola(espressione)`. L'espressione viene letta con
+  `ast.parse` e visitata nodo per nodo: passano solo numeri, `+ - * / // % **` e parentesi; nomi,
+  chiamate, attributi e confronti vengono rifiutati con un messaggio che dice quale elemento non va.
+  Limiti su lunghezza, esponente e grandezza del risultato. **Mai `eval`.**
+- **scadenze** (`server_mcp/scadenze.py`): `giorni_tra(data_inizio, data_fine)` e
+  `aggiungi_giorni(data, giorni, solo_lavorativi=False)`, date `AAAA-MM-GG` o `oggi`. Fine settimana e
+  festività (`server_mcp/risorse/festivita.json`: fisse e Lunedì dell'Angelo 2024–2030) non sono
+  lavorativi; se un anno non ha le festività mobili nel file, il risultato lo dice. Risultato «non normativo».
+- **catalogo** (`server_mcp/catalogo.py`): due tool sullo stesso file `server_mcp/risorse/corsi.json`
+  (corsi inventati): `cerca_corsi(testo, max_risultati=5)` cerca tutte le parole in codice, titolo, sede e
+  descrizione; `dettaglio_corso(codice)` dà tutti i campi. Nessun risultato = lista vuota dichiarata.
 
 ### Che cosa fa il prompt di sistema
 

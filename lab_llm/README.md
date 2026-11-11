@@ -12,6 +12,12 @@ sottoprocessi, che l'agente scopre da sé leggendone il catalogo. Il server `met
 `aggiungi_nota`, `elenca_note` ed `elimina_nota` e salva le note in un file SQLite, quindi **le note
 restano** anche dopo la chiusura del programma (la cronologia della chat no).
 
+Completano la lezione 5 altri quattro server, uno per ciascuna delle proposte del blocco 5:
+`unita` (`converti_unita`, elenco chiuso di unità), `calcolatrice` (`calcola`, espressioni valutate con
+`ast`, mai con `eval`), `scadenze` (`giorni_tra`, `aggiungi_giorni`, con festività italiane lette da
+`server_mcp/risorse/festivita.json`) e `catalogo` (`cerca_corsi`, `dettaglio_corso` su
+`server_mcp/risorse/corsi.json`, corsi inventati).
+
 Dalla lezione 6 (step 1) un nodo **router** decide, prima dell'agente, se la domanda rientra
 nell'ambito dichiarato in `AMBITO_AGENTE`. Le domande fuori ambito ricevono un rifiuto fisso e
 l'agente non viene eseguito. Nel log compaiono `router: categoria=… motivo=… -> agente|rifiuto` e,
@@ -67,8 +73,8 @@ Invoke-RestMethod http://localhost:1234/v1/models | Select-Object -ExpandPropert
 | `MCP_TIMEOUT` | no | `30` | secondi di attesa per l'avvio di un server MCP e per ogni sua chiamata; deve essere maggiore del doppio di `METEO_TIMEOUT` |
 | `METEO_TIMEOUT` | no | `10` | secondi di attesa per ogni richiesta HTTP del server meteo (ne fa due in sequenza: geocoding e previsioni) |
 | `NOTE_DB` | no | `dati/note.sqlite3` | file SQLite delle note; in Docker sta nel volume `note` (vedi sotto); un percorso relativo parte dalla cartella `lab_llm/` (directory di lavoro dei server, `CARTELLA_PROGETTO` in `agente/mcp_ponte.py`), non da quella della shell |
-| `SERVER_MCP` | no | `meteo,note` | server MCP da avviare, separati da virgole; se la variabile è presente ma vuota non parte nessun server; un nome sconosciuto dà un errore di configurazione |
-| `AMBITO_AGENTE` | no | ora, meteo, note, saluti | ambito dell'agente in linguaggio naturale, letto dal router; il testo predefinito è `AMBITO_PREDEFINITO` in `agente/config.py`; compare anche nel messaggio di rifiuto |
+| `SERVER_MCP` | no | tutti (`meteo,note,unita,calcolatrice,scadenze,catalogo`) | server MCP da avviare, separati da virgole; se la variabile è presente ma vuota non parte nessun server; un nome sconosciuto dà un errore di configurazione |
+| `AMBITO_AGENTE` | no | ora e saluti + una frase per ogni server attivo | ambito dell'agente in linguaggio naturale, letto dal router; se manca si compone con `ambito_predefinito` in `agente/config.py` (`AMBITO_PER_SERVER`), così togliendo un server da `SERVER_MCP` il router smette di accettarne le domande; compare anche nel messaggio di rifiuto |
 | `PROVA_REALE` | no | — | solo per i test con LM Studio vero (vedi sotto) |
 
 `.env` resta fuori da Git; `.env.example` non contiene credenziali (LM Studio non usa chiavi).
@@ -124,7 +130,7 @@ docker compose run --rm assistente
 python -m pytest
 ```
 
-Esito del 2026-11-09: `132 passed, 12 skipped` (le 12 prove reali risultano `skipped` senza `PROVA_REALE`). I test non richiedono
+Esito del 2026-11-11: `245 passed, 17 skipped` (le 17 prove reali risultano `skipped` senza `PROVA_REALE`). I test non richiedono
 LM Studio: il grafo usa un modello finto e lo strumento un istante fissato.
 
 ### Prove reali con LM Studio
@@ -162,9 +168,21 @@ Remove-Item Env:PROVA_REALE
 
 Esito del 2026-11-09: `2 passed` in circa un minuto e mezzo.
 
+Prove reali dei server delle proposte: una domanda per server (calcolo, conversione, giorni lavorativi,
+ricerca e poi dettaglio di un corso), un errore controllato per server con chiamata diretta e una
+prova con **tutti** i server e il router, per vedere se il modello sceglie ancora `calcola` con il
+catalogo completo:
+
+```powershell
+$env:PROVA_REALE="1"; python -m pytest tests/reale/test_proposte_reale.py -v -o log_cli=true --log-cli-level=INFO
+Remove-Item Env:PROVA_REALE
+```
+
+Esito: **non ancora eseguite** (LM Studio spento il 2026-11-11).
+
 ## Strumenti MCP e traccia nei log
 
-All'avvio il programma lancia i server (`python -m server_mcp.meteo`, `python -m server_mcp.note`) e
+All'avvio il programma lancia i server scelti in `SERVER_MCP` (`python -m server_mcp.meteo`, `python -m server_mcp.note`, …) e
 chiede a ciascuno il suo catalogo. Il nome, la descrizione e i parametri dei tool arrivano **solo**
 da lì: nell'agente non sono scritti. Su stderr compaiono, per ogni server, la riga del catalogo e,
 a ogni uso, una riga `strumento=...`; l'intestazione della chat elenca gli strumenti disponibili.
@@ -234,7 +252,7 @@ traceback. (Il `WARNING ... server MCP ... non disponibile` non è un errore fat
 | `Errore di configurazione: MAX_PASSI_STRUMENTO deve essere almeno 1, non 0.` | valore numerico fuori intervallo | correggi il valore in `.env` |
 | `Assistente> [errore] Non riesco a contattare LM Studio su ...` durante la chat | LM Studio si è fermato a sessione avviata | riavvia LM Studio e ripeti la domanda: la sessione e la cronologia restano valide |
 | Dal container: `LM Studio non risponde su http://host.docker.internal:1234/v1` | il container non raggiunge l'host | [docs/GUIDA_DOCKER.md](docs/GUIDA_DOCKER.md), sezione 6 |
-| `Errore di configurazione: SERVER_MCP contiene server sconosciuti: ...` | nome diverso da `meteo` o `note` | correggi `SERVER_MCP` in `.env` |
+| `Errore di configurazione: SERVER_MCP contiene server sconosciuti: ...` | nome diverso da `meteo`, `note`, `unita`, `calcolatrice`, `scadenze`, `catalogo` | correggi `SERVER_MCP` in `.env` |
 | `Errore di configurazione: MCP_TIMEOUT (...) deve essere maggiore del doppio di METEO_TIMEOUT (...)` | timeout incoerenti | alza `MCP_TIMEOUT` o abbassa `METEO_TIMEOUT` |
 
 Se il modello sbaglia il fuso (per esempio passa `"Roma"`), lo strumento gli restituisce un messaggio
@@ -245,7 +263,8 @@ d'errore e il modello può riprovare entro `MAX_PASSI_STRUMENTO` giri: il progra
 ```
 lab_llm/
 ├── agente/            codice: config, strumenti, mcp_ponte, graph, llm, client, main
-├── server_mcp/        server MCP (processi separati): meteo.py, note.py
+├── server_mcp/        server MCP (processi separati): meteo, note, unita, calcolatrice, scadenze, catalogo;
+│                      risorse/ = festivita.json, corsi.json
 ├── tests/             test automatici; tests/reale/ = prove con LM Studio (PROVA_REALE=1)
 ├── docs/              COME_FUNZIONA, GUIDA_DOCKER, GUIDA_PASSO_PASSO, PROSSIMA_SESSIONE, specifica e piano (superpowers/)
 ├── .env.example       variabili d'esempio (.env reale fuori da Git)
