@@ -1,0 +1,22 @@
+[
+  {"codice": "IA-101", "titolo": "Introduzione all'intelligenza artificiale", "sede": "Pordenone", "durata_ore": 40,
+   "descrizione": "Concetti base di apprendimento automatico, dati e valutazione dei modelli."},
+  {"codice": "IA-201", "titolo": "Deep learning con Python", "sede": "Pordenone", "durata_ore": 60,
+   "descrizione": "Reti neurali, addestramento e PyTorch con esercitazioni in laboratorio."},
+  {"codice": "IA-301", "titolo": "Chatbot e agenti con LLM", "sede": "Udine", "durata_ore": 48,
+   "descrizione": "Modelli linguistici locali, grafi LangGraph, strumenti e protocollo MCP."},
+  {"codice": "DATI-110", "titolo": "Basi di dati e SQL", "sede": "Udine", "durata_ore": 36,
+   "descrizione": "Modello relazionale, interrogazioni SQL, PostgreSQL e SQLite."},
+  {"codice": "DATI-210", "titolo": "Analisi dei dati con Python", "sede": "Trieste", "durata_ore": 40,
+   "descrizione": "Pandas, grafici e preparazione dei dati per l'apprendimento automatico."},
+  {"codice": "WEB-120", "titolo": "Sviluppo web front-end", "sede": "Trieste", "durata_ore": 50,
+   "descrizione": "HTML, CSS e JavaScript per interfacce accessibili."},
+  {"codice": "WEB-220", "titolo": "API e servizi back-end", "sede": "Pordenone", "durata_ore": 44,
+   "descrizione": "Progettazione di API HTTP con FastAPI, OpenAPI e test automatici."},
+  {"codice": "OPS-130", "titolo": "Container e Docker", "sede": "Gorizia", "durata_ore": 24,
+   "descrizione": "Immagini, container, Docker Compose e reti tra servizi."},
+  {"codice": "OPS-230", "titolo": "Cloud e distribuzione continua", "sede": "Udine", "durata_ore": 32,
+   "descrizione": "Pipeline di integrazione e distribuzione continua, monitoraggio."},
+  {"codice": "SIC-140", "titolo": "Sicurezza informatica di base", "sede": "Gorizia", "durata_ore": 30,
+   "descrizione": "Autenticazione, gestione dei segreti e principali vulnerabilità delle applicazioni web."}
+]
