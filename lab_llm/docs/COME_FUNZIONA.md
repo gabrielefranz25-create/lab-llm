@@ -281,6 +281,13 @@ chiede di ricordare qualcosa e di non dire mai «salvata» se lo strumento non l
 riferire gli errori senza inventare risultati. Senza quella riga `google/gemma-4-e2b` rispondeva
 «Ho salvato la nota» senza chiamare nulla.
 
+Alcune istruzioni valgono solo se lo strumento è collegato: stanno in `ISTRUZIONI_PER_STRUMENTO` e
+`costruisci_grafo` le aggiunge al prompt solo per gli strumenti presenti. Oggi c'è quella di `calcola`
+(«per» e «x» = moltiplicazione, «diviso» = divisione): senza, gemma-4-e2b traduceva «15 per 12» in
+`15/12`, e la descrizione del tool non bastava. Messa fissa nel prompt, però, rompeva l'orologio quando
+`calcola` non era collegato (4 su 4 «Che ore sono?» senza chiamata a `ora_corrente`): citare uno
+strumento assente confonde il modello.
+
 ## Compattazione della cronologia (nodo `compatta`)
 
 - Scatta all'inizio del turno quando la cronologia supera `MAX_MESSAGGI_CONTESTO` (default 20).

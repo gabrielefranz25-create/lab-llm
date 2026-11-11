@@ -111,8 +111,12 @@ Spunta le caselle - [x] nel piano man mano.
 7. `docs`: guide aggiornate.
 8. Revisione finale (agente revisore): `fix(strumenti)` per la ricerca con parole vuote, «oggi» nel fuso
    dell'agente e il risultato infinito del convertitore; i rilievi minori sono rimandati.
-- Esiti: `python -m pytest` → 251 passati, 17 skipped; discovery stdio dei sei server → 11 tool MCP.
-  **Da fare**: prove reali (LM Studio spento) e `docker compose build` (Docker Desktop non partiva).
+9. Prove reali e Docker (LM Studio e Docker accesi): `docker compose build` ok, nel container 11 tool
+   e chat via pipe ok. In chat «15 per 12» → `calcola("15/12")`: `fix(grafo)` con l'istruzione sui conti
+   in `ISTRUZIONI_PER_STRUMENTO`, aggiunta solo se `calcola` è collegato (fissa nel prompt rompeva la
+   prova reale dell'orologio, verificato 4 su 4 contro 4 su 4). Esiti finali: 253 test automatici,
+   17 prove reali passate.
+- Esiti: `python -m pytest` → 253 passati, 17 skipped; discovery stdio dei sei server → 11 tool MCP.
 - Escluse di proposito: resource del catalogo (lezione 6, step 4) e prompt MCP (step 5).
 
 ### Lezione 6: evolvere l'agente. In corso

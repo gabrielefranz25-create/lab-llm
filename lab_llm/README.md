@@ -130,7 +130,7 @@ docker compose run --rm assistente
 python -m pytest
 ```
 
-Esito del 2026-11-11: `251 passed, 17 skipped` (le 17 prove reali risultano `skipped` senza `PROVA_REALE`). I test non richiedono
+Esito del 2026-11-11: `253 passed, 17 skipped` (le 17 prove reali risultano `skipped` senza `PROVA_REALE`). I test non richiedono
 LM Studio: il grafo usa un modello finto e lo strumento un istante fissato.
 
 ### Prove reali con LM Studio
@@ -178,7 +178,8 @@ $env:PROVA_REALE="1"; python -m pytest tests/reale/test_proposte_reale.py -v -o 
 Remove-Item Env:PROVA_REALE
 ```
 
-Esito: **non ancora eseguite** (LM Studio spento il 2026-11-11).
+Esito del 2026-11-11: `5 passed` in circa 4 minuti. Suite reale completa (`-m reale`): `17 passed` in
+circa 9 minuti. In chat «Quanto fa 15 per 12?» → `calcola("15*12")` = 180 (vedi sotto, prompt di sistema).
 
 ## Strumenti MCP e traccia nei log
 

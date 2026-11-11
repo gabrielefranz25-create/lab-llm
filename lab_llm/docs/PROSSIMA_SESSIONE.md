@@ -17,17 +17,31 @@
   router `2 passed`; prova a mano con domanda in ambito, seguito «e domani?» e domanda fuori ambito.
 - Prossimo: step 2 (revisore). Il prompt di partenza è quello del PDF (vedi `docs/PERCORSO_PROGETTO.md`).
 
-## Stato al 2026-11-11 (completamento della lezione 5, blocco A)
-- Branch `feat/strumenti-proposte` (non ancora unito in `dev`): server `unita`, `calcolatrice`,
-  `scadenze`, `catalogo` e ambito del router composto dai server attivi. `python -m pytest` →
-  251 passed, 17 skipped.
-- **Prima del merge**: prove reali con LM Studio acceso
-  (`$env:PROVA_REALE="1"; python -m pytest tests/reale/test_proposte_reale.py -v -o log_cli=true --log-cli-level=INFO`),
-  `docker compose build` + `docker compose run --rm assistente` con una domanda per server, chat a mano
-  con `python -m agente`, revisione finale.
+## Stato al 2026-11-11 (completamento della lezione 5, blocco A fatto)
+- Branch `feat/strumenti-proposte`, **verificato ma non ancora unito in `dev`** (il merge va confermato):
+  server `unita`, `calcolatrice`, `scadenze`, `catalogo`; ambito del router composto dai server attivi;
+  istruzione sui conti nel prompt solo con `calcola` collegato.
+- Esiti: `python -m pytest` → 253 passed, 17 skipped; prove reali (`-m reale`) → 17 passed;
+  `docker compose build` ok e chat nel container via pipe ok; revisione finale fatta (rilievi minori
+  rimandati, elencati in `docs/PERCORSO_PROGETTO.md`).
+- Se il PC va in sospensione durante i test, le esecuzioni durano ore: tenerlo sveglio.
 - Tabella di marcia della lezione 5: dopo il blocco A, blocco B (tre varianti dell'orologio: locale,
   FastAPI + wrapper HTTP, FastMCP, una attiva con `VARIANTE_OROLOGIO`) e blocco C (Streamable HTTP in
   locale, catalogo identico a stdio). Poi si riprende la lezione 6 dallo step 2 (revisore).
+
+## Prompt da incollare (ripartenza)
+```
+Leggi il CLAUDE.md e docs/PROSSIMA_SESSIONE.md e controlla lo stato della repository.
+Il blocco A della lezione 5 (strumenti delle proposte) è verificato sul branch feat/strumenti-proposte:
+uniscilo in dev (merge, niente push) e poi passiamo al blocco B: le tre varianti dello stesso orologio
+della lezione 5 (slide 17–23): locale, FastAPI + wrapper HTTP, FastMCP, una sola attiva con
+VARIANTE_OROLOGIO, stesso contratto ora_corrente(fuso_orario) e log che mostrano il percorso.
+Il progetto attuale funziona: estendilo senza riscriverlo e non anticipare la lezione 6.
+Lavora su un feature branch creato da dev. Chiariscimi le decisioni mancanti e proponi una soluzione
+semplice; distingui test simulati e prove reali con LM Studio.
+Non iniziare l'implementazione prima dell'approvazione della specifica e del piano.
+A fine blocco aggiorna docs/GRAFO_E_STRUMENTI.md e docs/PERCORSO_PROGETTO.md.
+```
 
 ## Lezione 6: evolvere l'agente
 Materiale: `materiali/LLM_Lez_6.pdf` e gli appunti `materiali/grafo, mcp, interfaccia ed architet.txt`,
