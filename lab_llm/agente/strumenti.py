@@ -2,25 +2,13 @@
 
 import logging
 from collections.abc import Callable
-from datetime import datetime, timezone
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from datetime import datetime
 
 from langchain_core.tools import BaseTool, tool
 
+from servizio_orologio.logica import FusoNonValido, descrivi_ora
+
 logger = logging.getLogger(__name__)
-
-# Tabelle in italiano: il locale di sistema non è affidabile (soprattutto nel container).
-GIORNI = ("lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica")
-MESI = ("gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio",
-        "agosto", "settembre", "ottobre", "novembre", "dicembre")
-
-
-def _offset(locale: datetime) -> str:
-    """Scostamento da UTC nella forma +HH:MM / -HH:MM."""
-    minuti = int(locale.utcoffset().total_seconds() // 60)
-    segno = "+" if minuti >= 0 else "-"
-    ore, resto = divmod(abs(minuti), 60)
-    return f"{segno}{ore:02d}:{resto:02d}"
 
 
 def calcola_ora(fuso: str, adesso: datetime | None = None) -> str:
@@ -29,18 +17,10 @@ def calcola_ora(fuso: str, adesso: datetime | None = None) -> str:
     Con un fuso non valido restituisce un messaggio d'errore per il modello invece di sollevare.
     """
     try:
-        zona = ZoneInfo(fuso)
-    except (ZoneInfoNotFoundError, ValueError):
+        return descrivi_ora(fuso, adesso)
+    except FusoNonValido as errore:
         logger.warning("strumento ora_corrente: fuso %r non riconosciuto", fuso)
-        return f"Errore: fuso orario '{fuso}' non riconosciuto. Usa un nome IANA come 'Europe/Rome'."
-
-    locale = (adesso or datetime.now(timezone.utc)).astimezone(zona).replace(microsecond=0)
-    return "\n".join([
-        f"Fuso orario: {fuso} ({locale.tzname()}, UTC{_offset(locale)})",
-        f"Data: {GIORNI[locale.weekday()]} {locale.day} {MESI[locale.month - 1]} {locale.year}",
-        f"Ora: {locale:%H:%M:%S}",
-        f"ISO 8601: {locale.isoformat()}",
-    ])
+        return f"Errore: {errore}"
 
 
 def crea_ora_corrente(fuso_predefinito: str = "Europe/Rome",
