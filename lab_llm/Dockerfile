@@ -5,6 +5,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY agente/ agente/
 COPY server_mcp/ server_mcp/
+COPY servizio_orologio/ servizio_orologio/
 RUN useradd --create-home appuser
 RUN mkdir -p /app/dati && chown appuser /app/dati
 USER appuser

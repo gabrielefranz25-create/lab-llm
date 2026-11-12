@@ -4,12 +4,23 @@ services:
     env_file: .env
     environment:
       LM_BASE_URL: http://host.docker.internal:1234/v1   # dal container, l'host non è "localhost"
+      OROLOGIO_API_URL: http://orologio-api:8001         # usato solo con VARIANTE_OROLOGIO=fastapi
     extra_hosts:
       - "host.docker.internal:host-gateway"
     stdin_open: true
     tty: true
     volumes:
       - note:/app/dati
+
+  # Variante 02 dell'orologio: servizio FastAPI separato, avviato solo con il profilo "fastapi":
+  #   docker compose --profile fastapi up -d orologio-api
+  orologio-api:
+    build: .
+    profiles: ["fastapi"]
+    command: ["python", "-m", "servizio_orologio.api"]
+    environment:
+      OROLOGIO_API_HOST: 0.0.0.0   # raggiungibile dagli altri container della rete di compose
+      OROLOGIO_API_PORTA: "8001"
 
 volumes:
   note: {}
