@@ -3,12 +3,14 @@
 import logging
 import sys
 
+from langchain_core.tools import BaseTool
+
 from agente.client import avvia_sessione
 from agente.config import Config, ErroreConfigurazione, carica_config
 from agente.graph import costruisci_grafo, limite_ricorsione
 from agente.llm import ErroreModello, crea_modello, crea_riassuntore, crea_router, verifica_modello
 from agente.mcp_ponte import ConnessioneMCP, ServerMCP, unisci_strumenti
-from agente.strumenti import crea_ora_corrente
+from agente.strumenti import crea_ora_corrente, crea_ora_corrente_http
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +41,29 @@ def server_da_config(config: Config) -> list[ServerMCP]:
         **{nome: ServerMCP(nome, ("-m", f"server_mcp.{nome}"), comuni)
            for nome in ("unita", "calcolatrice", "catalogo")},
     }
-    return [disponibili[nome] for nome in config.server_mcp]
+    servers = [disponibili[nome] for nome in config.server_mcp]
+    if config.variante_orologio == "mcp":  # variante 03: l'orologio arriva dal catalogo del server
+        servers.insert(0, ServerMCP("orologio", ("-m", "server_mcp.orologio"),
+                                    {**comuni, "FUSO_ORARIO": config.fuso_orario_predefinito}))
+    return servers
+
+
+def strumenti_orologio(config: Config) -> list[BaseTool]:
+    """Orologio della variante scelta con VARIANTE_OROLOGIO (lo stesso contratto `ora_corrente`).
+
+    Con `mcp` restituisce una lista vuota: il tool arriva dal catalogo del server `orologio`.
+    """
+    variante = config.variante_orologio
+    if variante == "fastapi":
+        percorso = f"GET {config.orologio_api_url.rstrip('/')}/ora"
+        strumenti = [crea_ora_corrente_http(config.orologio_api_url, config.orologio_api_timeout,
+                                            config.fuso_orario_predefinito)]
+    elif variante == "mcp":
+        percorso, strumenti = "server MCP orologio (stdio)", []
+    else:
+        percorso, strumenti = "funzione locale", [crea_ora_corrente(config.fuso_orario_predefinito)]
+    logger.info("orologio: variante=%s percorso=%s", variante, percorso)
+    return strumenti
 
 
 def main() -> int:
@@ -65,8 +89,7 @@ def main() -> int:
 
     try:
         with ConnessioneMCP(server_da_config(config), config.mcp_timeout) as connessione:
-            strumenti = unisci_strumenti([crea_ora_corrente(config.fuso_orario_predefinito)],
-                                         connessione.strumenti)
+            strumenti = unisci_strumenti(strumenti_orologio(config), connessione.strumenti)
             grafo = costruisci_grafo(
                 crea_modello(config, strumenti), strumenti,
                 max_passi=config.max_passi_strumento,

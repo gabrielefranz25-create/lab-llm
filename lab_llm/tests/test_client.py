@@ -12,7 +12,7 @@ import agente.main
 from agente.client import avvia_sessione
 from agente.graph import costruisci_grafo
 from agente.config import carica_config
-from agente.main import configura_logging, main, server_da_config
+from agente.main import configura_logging, main, server_da_config, strumenti_orologio
 from agente.strumenti import crea_ora_corrente
 
 SERVER = "http://h:1/v1"
@@ -185,6 +185,38 @@ def test_server_da_config_log_server_e_framework():
     (meteo,) = server_da_config(_config(SERVER_MCP="meteo", LOG_LEVEL="DEBUG"))
     assert meteo.env["LOG_LEVEL"] == "DEBUG"  # i log del nostro server seguono l'agente
     assert meteo.env["FASTMCP_LOG_LEVEL"] == "WARNING"  # niente "Starting MCP server" nella chat
+
+
+def test_server_da_config_orologio_mcp_solo_con_la_variante_mcp():
+    assert "orologio" not in [s.nome for s in server_da_config(_config())]
+    orologio, meteo = server_da_config(_config(SERVER_MCP="meteo", VARIANTE_OROLOGIO="mcp",
+                                               FUSO_ORARIO_PREDEFINITO="Asia/Tokyo"))
+    assert (orologio.nome, meteo.nome) == ("orologio", "meteo")
+    assert orologio.argomenti == ("-m", "server_mcp.orologio")
+    assert orologio.env["FUSO_ORARIO"] == "Asia/Tokyo"
+    assert orologio.env["FASTMCP_LOG_LEVEL"] == "WARNING"
+
+
+def test_strumenti_orologio_locale(caplog):
+    with caplog.at_level(logging.INFO, logger="agente.main"):
+        (strumento,) = strumenti_orologio(_config())
+    assert strumento.name == "ora_corrente" and not strumento.metadata
+    assert "orologio: variante=locale percorso=funzione locale" in caplog.text
+
+
+def test_strumenti_orologio_fastapi(caplog):
+    with caplog.at_level(logging.INFO, logger="agente.main"):
+        (strumento,) = strumenti_orologio(_config(VARIANTE_OROLOGIO="fastapi",
+                                                  OROLOGIO_API_URL="http://o:9"))
+    assert strumento.name == "ora_corrente"
+    assert strumento.metadata == {"origine": "http:orologio"}
+    assert "orologio: variante=fastapi percorso=GET http://o:9/ora" in caplog.text
+
+
+def test_strumenti_orologio_mcp_arriva_dal_catalogo(caplog):
+    with caplog.at_level(logging.INFO, logger="agente.main"):
+        assert strumenti_orologio(_config(VARIANTE_OROLOGIO="mcp")) == []
+    assert "orologio: variante=mcp percorso=server MCP orologio (stdio)" in caplog.text
 
 
 def _avvia_main_con_mcp(monkeypatch, connessione):

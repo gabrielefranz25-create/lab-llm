@@ -9,6 +9,8 @@ from dotenv import load_dotenv
 
 LIVELLI_LOG = ("DEBUG", "INFO", "WARNING", "ERROR")
 SERVER_MCP_NOTI = ("meteo", "note", "unita", "calcolatrice", "scadenze", "catalogo")
+# Percorso dello strumento orologio (lezione 5, blocco B): una sola variante attiva per volta.
+VARIANTI_OROLOGIO = ("locale", "fastapi", "mcp")
 # Ambito dell'agente usato dal router se AMBITO_AGENTE è assente o vuota: l'orologio e i saluti ci
 # sono sempre, poi una frase per ogni server MCP attivo.
 AMBITO_INIZIO = "data e ora attuali in qualsiasi fuso orario"
@@ -50,6 +52,9 @@ class Config:
     note_db: str
     server_mcp: tuple[str, ...]
     ambito: str
+    variante_orologio: str = "locale"
+    orologio_api_url: str = "http://localhost:8001"
+    orologio_api_timeout: float = 5.0
 
 
 def _leggi(ambiente: Mapping[str, str], nome: str, default: str | None = None) -> str:
@@ -104,6 +109,15 @@ def _livello_log(ambiente: Mapping[str, str], nome: str, default: str) -> str:
     return testo
 
 
+def _variante_orologio(ambiente: Mapping[str, str]) -> str:
+    testo = _leggi(ambiente, "VARIANTE_OROLOGIO", "locale").lower()
+    if testo not in VARIANTI_OROLOGIO:
+        raise ErroreConfigurazione(
+            f"VARIANTE_OROLOGIO deve essere uno tra {', '.join(VARIANTI_OROLOGIO)}, non '{testo}'."
+        )
+    return testo
+
+
 def _elenco_server(ambiente: Mapping[str, str]) -> tuple[str, ...]:
     """Legge SERVER_MCP: assente = tutti i server noti, vuota = nessun server."""
     grezzo = ambiente.get("SERVER_MCP")  # non _leggi: la stringa vuota è un valore valido
@@ -151,4 +165,7 @@ def carica_config(ambiente: Mapping[str, str] | None = None) -> Config:
         note_db=_leggi(ambiente, "NOTE_DB", "dati/note.sqlite3"),
         server_mcp=server_mcp,
         ambito=_leggi(ambiente, "AMBITO_AGENTE", ambito_predefinito(server_mcp)),
+        variante_orologio=_variante_orologio(ambiente),
+        orologio_api_url=_leggi(ambiente, "OROLOGIO_API_URL", "http://localhost:8001"),
+        orologio_api_timeout=_secondi(ambiente, "OROLOGIO_API_TIMEOUT", 5.0),
     )

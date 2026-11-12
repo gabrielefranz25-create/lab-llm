@@ -140,3 +140,32 @@ def test_ambito_predefinito_contiene_tutti_i_server():
 def test_ambito_personalizzato_vince_sui_server():
     config = carica_config({**MINIMO, "SERVER_MCP": "calcolatrice", "AMBITO_AGENTE": "solo conti"})
     assert config.ambito == "solo conti"
+
+
+def test_variante_orologio_predefinita_locale():
+    config = carica_config(MINIMO)
+    assert config.variante_orologio == "locale"
+    assert config.orologio_api_url == "http://localhost:8001"
+    assert config.orologio_api_timeout == 5.0
+
+
+@pytest.mark.parametrize("valore, atteso", [("fastapi", "fastapi"), ("MCP", "mcp"), (" locale ", "locale")])
+def test_variante_orologio_valida(valore, atteso):
+    assert carica_config({**MINIMO, "VARIANTE_OROLOGIO": valore}).variante_orologio == atteso
+
+
+def test_variante_orologio_sconosciuta():
+    with pytest.raises(ErroreConfigurazione, match="VARIANTE_OROLOGIO deve essere uno tra locale, fastapi, mcp"):
+        carica_config({**MINIMO, "VARIANTE_OROLOGIO": "grpc"})
+
+
+def test_url_e_timeout_del_servizio_orologio():
+    config = carica_config({**MINIMO, "OROLOGIO_API_URL": "http://orologio-api:8001",
+                            "OROLOGIO_API_TIMEOUT": "2.5"})
+    assert config.orologio_api_url == "http://orologio-api:8001"
+    assert config.orologio_api_timeout == 2.5
+
+
+def test_timeout_del_servizio_orologio_non_valido():
+    with pytest.raises(ErroreConfigurazione, match="OROLOGIO_API_TIMEOUT"):
+        carica_config({**MINIMO, "OROLOGIO_API_TIMEOUT": "0"})
