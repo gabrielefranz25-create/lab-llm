@@ -36,6 +36,8 @@
   scritti e committati senza attendere l'approvazione, resoconto a fine blocco. Push solo su richiesta.
 - Blocco C (Streamable HTTP, `TRASPORTO_MCP`) fatto su `feat/mcp-http`. Lezione 5 completa.
 - Ordine rimasto: lezione 6 dallo step 2 (revisore) allo step 9.
+- Step 2 avviato sul branch `feat/revisore` (da `dev`): specifica scritta
+  (`docs/superpowers/specs/2026-11-13-revisore-design.md`); mancano piano e implementazione.
 
 ## Prompt da incollare (ripartenza)
 ```
