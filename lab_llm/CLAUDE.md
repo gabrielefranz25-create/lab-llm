@@ -8,8 +8,10 @@ La cartella del progetto è `lab_llm/`. Specifica e piano sono in `lab_llm/docs/
   `config` (variabili d'ambiente), `strumenti` (orologio), `graph` (stato, nodi, instradamento),
   `llm` (LM Studio), `client` (chat da terminale), `mcp_ponte` (ponte sincrono verso i server MCP),
   `main` (avvio).
+- `servizio_orologio/`: logica dell'orologio condivisa (`logica`) e servizio FastAPI (`api`), usati dalle
+  tre varianti scelte con `VARIANTE_OROLOGIO` (`locale`, `fastapi`, `mcp`).
 - `server_mcp/`: server MCP come processi separati (`meteo`, `note`, `unita`, `calcolatrice`, `scadenze`,
-  `catalogo`); dati in `server_mcp/risorse/` (non `dati/`, esclusa da Git); non dipendono da `agente/`.
+  `catalogo`, `orologio`); dati in `server_mcp/risorse/` (non `dati/`, esclusa da Git); non dipendono da `agente/`.
 - `tests/`: test automatici senza modello; `tests/reale/`: prove con LM Studio vero.
 - `docs/`: `COME_FUNZIONA.md`, `GRAFO_E_STRUMENTI.md`, `PERCORSO_PROGETTO.md`, `GUIDA_DOCKER.md`,
   `GUIDA_PASSO_PASSO.md`, `PROSSIMA_SESSIONE.md`, specifica e piano.
@@ -18,6 +20,8 @@ La cartella del progetto è `lab_llm/`. Specifica e piano sono in `lab_llm/docs/
 
 ## Comandi (PowerShell, dalla cartella `lab_llm/`, venv `.venv` attivo)
 - Avvio: `python -m agente`. Docker: `docker compose build`, poi `docker compose run --rm assistente`.
+- Servizio FastAPI dell'orologio (variante `fastapi`): `python -m servizio_orologio.api`; in Docker
+  `docker compose --profile fastapi up -d orologio-api`.
 - Test automatici: `python -m pytest` (le prove reali risultano skipped).
 - Prove reali (LM Studio acceso): `$env:PROVA_REALE="1"; python -m pytest -m reale -v`.
 - Prove reali MCP (anche rete): `$env:PROVA_REALE="1"; python -m pytest tests/reale/test_mcp_reale.py -v -o log_cli=true --log-cli-level=INFO`.

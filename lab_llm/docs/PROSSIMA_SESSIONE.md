@@ -29,18 +29,20 @@
   FastAPI + wrapper HTTP, FastMCP, una attiva con `VARIANTE_OROLOGIO`) e blocco C (Streamable HTTP in
   locale, catalogo identico a stdio). Poi si riprende la lezione 6 dallo step 2 (revisore).
 
+## Stato al 2026-11-13 (blocco B fatto)
+- Blocco A unito in `dev`. Blocco B (tre varianti dell'orologio, `VARIANTE_OROLOGIO`) su
+  `feat/varianti-orologio`, unito in `dev` dopo la verifica.
+- Modalità concordata il 2026-11-12: **autonomia** («fai tutto»): per ogni blocco/step spec e piano
+  scritti e committati senza attendere l'approvazione, resoconto a fine blocco. Push solo su richiesta.
+- Ordine rimasto: blocco C (Streamable HTTP in locale, catalogo identico a stdio), poi lezione 6
+  dallo step 2 (revisore) allo step 9.
+
 ## Prompt da incollare (ripartenza)
 ```
 Leggi il CLAUDE.md e docs/PROSSIMA_SESSIONE.md e controlla lo stato della repository.
-Il blocco A della lezione 5 (strumenti delle proposte) è verificato sul branch feat/strumenti-proposte:
-uniscilo in dev (merge, niente push) e poi passiamo al blocco B: le tre varianti dello stesso orologio
-della lezione 5 (slide 17–23): locale, FastAPI + wrapper HTTP, FastMCP, una sola attiva con
-VARIANTE_OROLOGIO, stesso contratto ora_corrente(fuso_orario) e log che mostrano il percorso.
-Il progetto attuale funziona: estendilo senza riscriverlo e non anticipare la lezione 6.
-Lavora su un feature branch creato da dev. Chiariscimi le decisioni mancanti e proponi una soluzione
-semplice; distingui test simulati e prove reali con LM Studio.
-Non iniziare l'implementazione prima dell'approvazione della specifica e del piano.
-A fine blocco aggiorna docs/GRAFO_E_STRUMENTI.md e docs/PERCORSO_PROGETTO.md.
+Continuiamo in autonomia dal primo blocco non fatto (blocco C della lezione 5, poi gli step della
+lezione 6): spec e piano in docs/superpowers/, feature branch da dev, test, prove reali con LM Studio,
+Docker, documenti aggiornati, merge in dev (niente push).
 ```
 
 ## Lezione 6: evolvere l'agente

@@ -18,6 +18,12 @@ Completano la lezione 5 altri quattro server, uno per ciascuna delle proposte de
 `server_mcp/risorse/festivita.json`) e `catalogo` (`cerca_corsi`, `dettaglio_corso` su
 `server_mcp/risorse/corsi.json`, corsi inventati).
 
+Il blocco B della lezione 5 confronta **tre varianti dello stesso orologio**, scelte con
+`VARIANTE_OROLOGIO`: `locale` (funzione nel processo dell'agente, default), `fastapi` (servizio HTTP
+`servizio_orologio/api.py` chiamato da un wrapper scritto a mano) e `mcp` (server FastMCP
+`server_mcp/orologio.py`, contratto letto dal catalogo). Il contratto `ora_corrente(fuso_orario)` è
+lo stesso; nel log cambia `origine=locale|http:orologio|mcp:orologio`.
+
 Dalla lezione 6 (step 1) un nodo **router** decide, prima dell'agente, se la domanda rientra
 nell'ambito dichiarato in `AMBITO_AGENTE`. Le domande fuori ambito ricevono un rifiuto fisso e
 l'agente non viene eseguito. Nel log compaiono `router: categoria=… motivo=… -> agente|rifiuto` e,
@@ -101,6 +107,25 @@ Assistente> ...
 - I log vanno su stderr, la chat su stdout.
 - Prova non interattiva: `"Che ore sono?`nesci" | python -m agente`.
 
+### Le tre varianti dell'orologio
+
+```powershell
+# 01 locale (default)
+python -m agente
+# 02 FastAPI: prima il servizio, in un altro terminale (porta 8001), poi l'agente
+python -m servizio_orologio.api
+$env:VARIANTE_OROLOGIO="fastapi"; python -m agente
+# 03 FastMCP: l'agente avvia da sé il server orologio via stdio
+$env:VARIANTE_OROLOGIO="mcp"; python -m agente
+```
+
+Verificato il 2026-11-12 con «Che ore sono a Tokyo?»: nelle tre varianti il modello chiama
+`ora_corrente` con `{"fuso_orario": "Asia/Tokyo"}` e la riga del nodo strumenti riporta
+`origine=locale`, `origine=http:orologio` e `origine=mcp:orologio`. Con il servizio FastAPI spento
+il modello riceve `Errore di collegamento HTTP con il servizio orologio: …`, distinto dal fuso non
+valido (`Errore dallo strumento ora_corrente: fuso orario 'Mars/Olympus' non riconosciuto…`).
+Il servizio si prova anche da solo: `curl "http://127.0.0.1:8001/ora?fuso_orario=Asia/Tokyo"`.
+
 ## Avvio con Docker
 
 LM Studio resta sull'host; il container lo raggiunge su `http://host.docker.internal:1234/v1`.
@@ -118,6 +143,11 @@ docker compose run --rm assistente
   passato via pipe: `"Che ore sono?`nesci" | docker compose run --rm -T assistente`.
 - Dal container la rete verso Open-Meteo funziona (verificato, codice HTTP 200):
   `docker compose run --rm assistente python -c "import httpx; print(httpx.get('https://api.open-meteo.com/v1/forecast?latitude=46&longitude=13&current=temperature_2m', timeout=10).status_code)"`.
+- Variante FastAPI dell'orologio nel container (servizio `orologio-api`, profilo `fastapi`):
+  `docker compose --profile fastapi up -d --build orologio-api`, poi
+  `docker compose run --rm -e VARIANTE_OROLOGIO=fastapi assistente`; alla fine
+  `docker compose --profile fastapi down`. Variante MCP: `docker compose run --rm -e VARIANTE_OROLOGIO=mcp assistente`.
+  Verificate via pipe il 2026-11-12 (anche con il servizio spento: errore di collegamento).
 - Prova con meteo e note (input via pipe):
   `"Che tempo fa a Udine?`nRicordami di comprare il pane`nesci" | docker compose run --rm -T assistente`
   ha chiamato `meteo_attuale` e `aggiungi_nota`. Le note stanno nel volume `note`: una seconda
@@ -130,7 +160,7 @@ docker compose run --rm assistente
 python -m pytest
 ```
 
-Esito del 2026-11-11: `253 passed, 17 skipped` (le 17 prove reali risultano `skipped` senza `PROVA_REALE`). I test non richiedono
+Esito del 2026-11-13: `287 passed, 22 skipped` (le 22 prove reali risultano `skipped` senza `PROVA_REALE`). I test non richiedono
 LM Studio: il grafo usa un modello finto e lo strumento un istante fissato.
 
 ### Prove reali con LM Studio
@@ -264,7 +294,8 @@ d'errore e il modello può riprovare entro `MAX_PASSI_STRUMENTO` giri: il progra
 ```
 lab_llm/
 ├── agente/            codice: config, strumenti, mcp_ponte, graph, llm, client, main
-├── server_mcp/        server MCP (processi separati): meteo, note, unita, calcolatrice, scadenze, catalogo;
+├── servizio_orologio/ logica condivisa dell'orologio (logica.py) e servizio FastAPI (api.py)
+├── server_mcp/        server MCP (processi separati): meteo, note, unita, calcolatrice, scadenze, catalogo, orologio;
 │                      risorse/ = festivita.json, corsi.json
 ├── tests/             test automatici; tests/reale/ = prove con LM Studio (PROVA_REALE=1)
 ├── docs/              COME_FUNZIONA, GUIDA_DOCKER, GUIDA_PASSO_PASSO, PROSSIMA_SESSIONE, specifica e piano (superpowers/)

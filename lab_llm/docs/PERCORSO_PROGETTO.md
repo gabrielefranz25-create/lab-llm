@@ -119,6 +119,25 @@ Spunta le caselle - [x] nel piano man mano.
 - Esiti: `python -m pytest` → 253 passati, 17 skipped; discovery stdio dei sei server → 11 tool MCP.
 - Escluse di proposito: resource del catalogo (lezione 6, step 4) e prompt MCP (step 5).
 
+### Lezione 5, blocco B (12–13/11): tre varianti dello stesso orologio. Branch `feat/varianti-orologio`
+- Prompt: «COMPLETIAMO IL Progetto», poi «fai tutto» (completare blocchi B e C e gli step 2–9 della
+  lezione 6). Scelta con una domanda: **autonomo, un blocco alla volta** (spec e piano scritti e
+  committati senza attendere l'approvazione, resoconto a fine blocco); LM Studio e Docker accesi.
+- Skill e modalità: `superpowers:brainstorming` (interrotto dalla scelta di autonomia),
+  `superpowers:executing-plans` con `superpowers:test-driven-development`, modalità auto.
+- Specifica `specs/2026-11-12-varianti-orologio-design.md` e piano `plans/2026-11-12-varianti-orologio.md`.
+1. `refactor(strumenti)`: logica in `servizio_orologio/logica.py` (`descrivi_ora`, `FusoNonValido`), condivisa dalle tre varianti.
+2. `feat(orologio)`: servizio FastAPI `servizio_orologio/api.py` (`GET /ora`, `GET /salute`); nuove dipendenze `fastapi==0.162.5`, `uvicorn==0.54.0`.
+3. `feat(strumenti)`: wrapper HTTP `crea_ora_corrente_http`, stesso contratto scritto a mano; errori di trasporto distinti dal fuso non valido.
+4. `feat(orologio)`: server FastMCP `server_mcp/orologio.py`.
+5. `feat(config)`: `VARIANTE_OROLOGIO` (`locale`/`fastapi`/`mcp`), `OROLOGIO_API_URL`, `OROLOGIO_API_TIMEOUT`; log `orologio: variante=… percorso=…`.
+6. `test(reale)`: `tests/reale/test_varianti_orologio_reale.py` (5 prove).
+7. `build(docker)`: servizio `orologio-api` nel profilo `fastapi`.
+8. `docs`: guide aggiornate.
+- Esiti: `python -m pytest` → 287 passati, 22 skipped; prove reali delle varianti → 5 passate;
+  `python -m agente` e Docker via pipe con «Che ore sono a Tokyo?» nelle tre varianti → `origine=locale`,
+  `http:orologio`, `mcp:orologio`; servizio spento → `Errore di collegamento HTTP …`.
+
 ### Lezione 6: evolvere l'agente. In corso
 Materiale: `materiali/LLM_Lez_6.pdf`. Uno step alla volta, ciascuno con spec, piano, test, prova reale, README e commit.
 

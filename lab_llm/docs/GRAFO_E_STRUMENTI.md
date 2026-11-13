@@ -65,7 +65,7 @@ Il modello vede tutti gli strumenti allo stesso modo (nome, descrizione, schema 
 
 | Strumento | Origine | Dove | Cosa fa |
 |---|---|---|---|
-| `ora_corrente(fuso_orario)` | locale | `agente/strumenti.py` | Data e ora in un fuso IANA. Il default è `FUSO_ORARIO_PREDEFINITO`. |
+| `ora_corrente(fuso_orario)` | una variante per volta (`VARIANTE_OROLOGIO`) | vedi sotto | Data e ora in un fuso IANA. Il default è `FUSO_ORARIO_PREDEFINITO`. |
 | `meteo_attuale(citta)` | MCP `meteo` | `server_mcp/meteo.py` | Meteo di adesso da Open-Meteo, con geocoding. |
 | `previsioni_meteo(citta, giorni=3)` | MCP `meteo` | `server_mcp/meteo.py` | Previsioni per alcuni giorni. |
 | `aggiungi_nota(testo)` | MCP `note` | `server_mcp/note.py` | Salva una nota su SQLite (`NOTE_DB`). |
@@ -81,6 +81,20 @@ Il modello vede tutti gli strumenti allo stesso modo (nome, descrizione, schema 
 I server scelti in `SERVER_MCP` (default: tutti) decidono anche l'ambito predefinito del router:
 `ambito_predefinito` in `agente/config.py` unisce ora e saluti a una frase per ogni server attivo
 (`AMBITO_PER_SERVER`).
+
+### Le tre varianti dell'orologio (lezione 5, blocco B)
+Stesso contratto (`ora_corrente(fuso_orario)`, stesso testo del risultato, stesso motivo d'errore),
+stessa logica (`servizio_orologio/logica.py`); cambia solo il percorso. Una sola variante è attiva,
+scelta con `VARIANTE_OROLOGIO` (default `locale`).
+
+| Variante | Dove gira | Chi scrive il contratto | `origine` nel log | Errore di trasporto |
+|---|---|---|---|---|
+| `locale` | nel processo dell'agente (`agente/strumenti.py`, `crea_ora_corrente`) | la funzione `@tool` | `locale` | — |
+| `fastapi` | servizio `python -m servizio_orologio.api` (`GET /ora`) | il wrapper scritto a mano `crea_ora_corrente_http` | `http:orologio` | `Errore di collegamento HTTP con il servizio orologio: …` |
+| `mcp` | server `server_mcp/orologio.py` (stdio, avviato dall'agente) | il server, letto con `list_tools()` | `mcp:orologio` | `Errore di collegamento MCP con il server orologio: …` |
+
+All'avvio il log mostra `orologio: variante=<v> percorso=<…>`. Dopo `bind_tools` il grafo è identico
+nelle tre varianti: il nodo `strumenti` non sa che dietro c'è HTTP o MCP.
 
 ### Percorso di uno strumento MCP
 1. All'avvio, `main.py` apre `ConnessioneMCP` (`agente/mcp_ponte.py`), che lancia i server scelti in `SERVER_MCP` come sottoprocessi **stdio**.

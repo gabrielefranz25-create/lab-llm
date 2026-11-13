@@ -157,7 +157,11 @@ Con il nodo `limite` non dovrebbe mai scattare; se scatta, il client mostra un e
 - Giorni e mesi in italiano vengono da tabelle nel codice, non dal `locale` di sistema.
 - Con un fuso non valido (es. `"Roma"`) lo strumento restituisce al modello un messaggio d'errore e
   scrive un WARNING; il modello può riprovare entro il limite di passaggi.
-- La logica pura è `calcola_ora(fuso, adesso)`: i test le passano un istante fisso.
+- La logica pura è `descrivi_ora(fuso, adesso)` in `servizio_orologio/logica.py` (solleva
+  `FusoNonValido`); `calcola_ora` dell'agente la avvolge e restituisce il testo `Errore: …`.
+  I test le passano un istante fisso.
+- Lo stesso strumento esiste in tre varianti (`VARIANTE_OROLOGIO`): funzione locale, servizio FastAPI
+  con wrapper HTTP scritto a mano, server FastMCP. Tabella in `docs/GRAFO_E_STRUMENTI.md`.
 
 Nelle prove reali `google/gemma-4-e2b` chiama `ora_corrente` con `{}` per «Che ore sono?» (quindi
 vale il default `Europe/Rome`) e con `{'fuso_orario': 'Asia/Tokyo'}` per «E a Tokyo?».

@@ -35,6 +35,19 @@ INFO  agente.graph | strumento ora_corrente {} -> Fuso orario: Europe/Rome (CET,
 Assistente> Attualmente sono le 11:19:06 nel fuso orario Europe/Rome (CET, UTC+01:00).
 ```
 
+Variante FastAPI dell'orologio (blocco B), verificata il 2026-11-12:
+
+```powershell
+docker compose --profile fastapi up -d --build orologio-api
+"Che ore sono a Tokyo?`nesci" | docker compose run --rm -T -e VARIANTE_OROLOGIO=fastapi assistente
+docker compose logs orologio-api      # riga "api orologio: fuso=Asia/Tokyo esito=ok"
+docker compose --profile fastapi down
+```
+
+Il servizio `orologio-api` è nel profilo `fastapi`, quindi `docker compose run --rm assistente` non lo
+avvia. L'assistente lo raggiunge per nome sulla rete di compose (`http://orologio-api:8001`); la porta
+non è pubblicata sull'host.
+
 ---
 
 ## 1. Controlli iniziali
