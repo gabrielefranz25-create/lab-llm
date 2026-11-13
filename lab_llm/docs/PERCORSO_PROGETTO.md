@@ -134,7 +134,7 @@ Spunta le caselle - [x] nel piano man mano.
 6. `test(reale)`: `tests/reale/test_varianti_orologio_reale.py` (5 prove).
 7. `build(docker)`: servizio `orologio-api` nel profilo `fastapi`.
 8. `docs`: guide aggiornate.
-- Esiti: `python -m pytest` → 287 passati, 22 skipped; prove reali delle varianti → 5 passate;
+- Esiti: `python -m pytest` → 288 passati, 22 skipped; prove reali (`-m reale`) → 22 passate (5 delle varianti);
   `python -m agente` e Docker via pipe con «Che ore sono a Tokyo?» nelle tre varianti → `origine=locale`,
   `http:orologio`, `mcp:orologio`; servizio spento → `Errore di collegamento HTTP …`.
 
