@@ -9,6 +9,8 @@ import httpx
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 
+from server_mcp.avvio import avvia
+
 logger = logging.getLogger(__name__)
 
 URL_GEOCODING = "https://geocoding-api.open-meteo.com/v1/search"
@@ -220,4 +222,4 @@ if __name__ == "__main__":
     logging.basicConfig(stream=sys.stderr, level=os.environ.get("LOG_LEVEL", "INFO").upper())
     for rumoroso in ("httpx", "httpx2", "httpcore"):  # una riga per richiesta HTTP: troppo rumore
         logging.getLogger(rumoroso).setLevel(logging.WARNING)
-    mcp.run(show_banner=False)
+    avvia(mcp, "meteo")

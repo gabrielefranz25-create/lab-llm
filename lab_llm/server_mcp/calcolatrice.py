@@ -10,6 +10,8 @@ import sys
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 
+from server_mcp.avvio import avvia
+
 logger = logging.getLogger(__name__)
 
 LUNGHEZZA_MAX = 200
@@ -104,4 +106,4 @@ def calcola(espressione: str) -> str:
 
 if __name__ == "__main__":
     logging.basicConfig(stream=sys.stderr, level=os.environ.get("LOG_LEVEL", "INFO").upper())
-    mcp.run(show_banner=False)
+    avvia(mcp, "calcolatrice")

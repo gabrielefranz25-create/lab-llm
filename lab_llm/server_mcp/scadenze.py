@@ -13,6 +13,8 @@ from zoneinfo import ZoneInfo
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 
+from server_mcp.avvio import avvia
+
 logger = logging.getLogger(__name__)
 
 PERCORSO_FESTIVITA = Path(__file__).resolve().parent / "risorse" / "festivita.json"
@@ -152,4 +154,4 @@ def aggiungi_giorni(data: str, giorni: int, solo_lavorativi: bool = False) -> st
 
 if __name__ == "__main__":
     logging.basicConfig(stream=sys.stderr, level=os.environ.get("LOG_LEVEL", "INFO").upper())
-    mcp.run(show_banner=False)
+    avvia(mcp, "scadenze")

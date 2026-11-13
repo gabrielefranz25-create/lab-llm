@@ -12,6 +12,8 @@ from pathlib import Path
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 
+from server_mcp.avvio import avvia
+
 logger = logging.getLogger(__name__)
 
 TESTO_MAX = 500
@@ -137,4 +139,4 @@ def elimina_nota(id_nota: int) -> str:
 
 if __name__ == "__main__":
     logging.basicConfig(stream=sys.stderr, level=os.environ.get("LOG_LEVEL", "INFO").upper())
-    mcp.run(show_banner=False)
+    avvia(mcp, "note")

@@ -11,6 +11,7 @@ import sys
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 
+from server_mcp.avvio import avvia
 from servizio_orologio.logica import FusoNonValido, descrivi_ora
 
 logger = logging.getLogger(__name__)
@@ -39,4 +40,4 @@ def crea_server(fuso_predefinito: str = "Europe/Rome") -> FastMCP:
 
 if __name__ == "__main__":
     logging.basicConfig(stream=sys.stderr, level=os.environ.get("LOG_LEVEL", "INFO").upper())
-    crea_server(os.environ.get("FUSO_ORARIO", "Europe/Rome")).run(show_banner=False)
+    avvia(crea_server(os.environ.get("FUSO_ORARIO", "Europe/Rome")), "orologio")
