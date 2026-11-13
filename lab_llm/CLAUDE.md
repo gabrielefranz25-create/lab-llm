@@ -22,7 +22,8 @@ La cartella del progetto è `lab_llm/`. Specifica e piano sono in `lab_llm/docs/
 - Avvio: `python -m agente`. Docker: `docker compose build`, poi `docker compose run --rm assistente`.
 - Servizio FastAPI dell'orologio (variante `fastapi`): `python -m servizio_orologio.api`; in Docker
   `docker compose --profile fastapi up -d orologio-api`.
-- Server MCP via HTTP: `python -m server_mcp.avvia_http`, poi `$env:TRASPORTO_MCP="http"; python -m agente`.
+- Server MCP via HTTP: `python -m server_mcp.avvia_http`, poi
+  `$env:TRASPORTO_MCP="http"; $env:VARIANTE_OROLOGIO="mcp"; python -m agente`.
 - Test automatici: `python -m pytest` (le prove reali risultano skipped).
 - Prove reali (LM Studio acceso): `$env:PROVA_REALE="1"; python -m pytest -m reale -v`.
 - Prove reali MCP (anche rete): `$env:PROVA_REALE="1"; python -m pytest tests/reale/test_mcp_reale.py -v -o log_cli=true --log-cli-level=INFO`.

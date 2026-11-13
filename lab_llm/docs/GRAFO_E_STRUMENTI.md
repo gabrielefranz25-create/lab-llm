@@ -102,7 +102,7 @@ server sono servizi Streamable HTTP già avviati (`python -m server_mcp.avvia_ht
 l'agente si collega a `http://<MCP_HTTP_HOST>:<porta>/mcp`. Catalogo e invocazione sono identici.
 
 ### Percorso di uno strumento MCP
-1. All'avvio, `main.py` apre `ConnessioneMCP` (`agente/mcp_ponte.py`), che lancia i server scelti in `SERVER_MCP` come sottoprocessi **stdio**.
+1. All'avvio, `main.py` apre `ConnessioneMCP` (`agente/mcp_ponte.py`), che lancia i server scelti in `SERVER_MCP` come sottoprocessi **stdio** oppure, con `TRASPORTO_MCP=http`, si collega ai server già avviati.
 2. Il ponte legge il catalogo (`list_tools()`) e crea per ogni voce un `StructuredTool` **sincrono**. Nome, descrizione e schema arrivano dal server e non sono mai scritti nell'agente.
 3. `unisci_strumenti` unisce strumenti locali e MCP; `crea_modello` li collega al modello (`bind_tools`).
 4. Quando il modello chiede uno strumento, `nodo_strumenti` lo invoca e il ponte esegue `call_tool` sul proprio thread asincrono.

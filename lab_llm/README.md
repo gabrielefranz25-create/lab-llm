@@ -250,17 +250,21 @@ Gli stessi server possono girare come servizi HTTP locali (porte 8101–8107, so
 # terminale 1: avvia i server di SERVER_MCP (default tutti) più l'orologio, Ctrl+C per fermarli
 python -m server_mcp.avvia_http
 # terminale 2: l'agente si collega con un URL invece di avviare sottoprocessi
-$env:TRASPORTO_MCP="http"; python -m agente
+# (VARIANTE_OROLOGIO=mcp: anche l'orologio passa da HTTP, altrimenti resta la funzione locale)
+$env:TRASPORTO_MCP="http"; $env:VARIANTE_OROLOGIO="mcp"; python -m agente
 ```
 
 Il log dell'agente mostra `trasporto MCP: http` e `server MCP <nome>: catalogo [...] via
 http://127.0.0.1:<porta>/mcp`. Il catalogo è identico a quello via stdio (nome, descrizione e schema di
 ogni tool): lo verifica `tests/test_mcp_http.py` per tutti e sette i server. Se un server HTTP è
-spento: `server MCP <nome> non disponibile: …` e l'agente prosegue senza quel server.
+spento: `server MCP <nome> non disponibile: …` e l'agente prosegue senza quel server; se si spegne
+durante la sessione, le chiamate restituiscono `Errore di collegamento MCP …` finché non si riavvia
+l'agente (come con stdio). Se un server non parte (per esempio porta occupata) `avvia_http` lo
+segnala (`server <nome> terminato (codice N)`) e ferma gli altri.
 Un singolo server: `$env:MCP_TRASPORTO="http"; python -m server_mcp.calcolatrice` (porta 8104).
 Verificato il 2026-11-13 con «Che ore sono a Tokyo?» e «Quanto fa 15 per 12?», anche in Docker:
 `docker compose --profile http up -d --build server-mcp`, poi
-`docker compose run --rm -e TRASPORTO_MCP=http assistente` (dopo `docker compose build`, perché anche
+`docker compose run --rm -e TRASPORTO_MCP=http -e VARIANTE_OROLOGIO=mcp assistente` (dopo `docker compose build`, perché anche
 l'immagine dell'assistente deve essere aggiornata).
 
 ### Diagnosi per livelli
