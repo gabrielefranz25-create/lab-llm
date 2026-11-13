@@ -5,6 +5,7 @@ services:
     environment:
       LM_BASE_URL: http://host.docker.internal:1234/v1   # dal container, l'host non è "localhost"
       OROLOGIO_API_URL: http://orologio-api:8001         # usato solo con VARIANTE_OROLOGIO=fastapi
+      MCP_HTTP_HOST: server-mcp                          # usato solo con TRASPORTO_MCP=http
     extra_hosts:
       - "host.docker.internal:host-gateway"
     stdin_open: true
@@ -21,6 +22,19 @@ services:
     environment:
       OROLOGIO_API_HOST: 0.0.0.0   # raggiungibile dagli altri container della rete di compose
       OROLOGIO_API_PORTA: "8001"
+
+  # Blocco C: i server MCP come servizi Streamable HTTP, avviati solo con il profilo "http":
+  #   docker compose --profile http up -d server-mcp
+  #   docker compose run --rm -e TRASPORTO_MCP=http assistente
+  server-mcp:
+    build: .
+    profiles: ["http"]
+    command: ["python", "-m", "server_mcp.avvia_http"]
+    env_file: .env
+    environment:
+      MCP_HTTP_ASCOLTO: 0.0.0.0   # raggiungibili dagli altri container; porte non pubblicate sull'host
+    volumes:
+      - note:/app/dati            # le note sono le stesse della modalità stdio
 
 volumes:
   note: {}
