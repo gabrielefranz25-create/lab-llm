@@ -160,7 +160,7 @@ docker compose run --rm assistente
 python -m pytest
 ```
 
-Esito del 2026-11-13: `316 passed, 24 skipped` (le 24 prove reali risultano `skipped` senza `PROVA_REALE`). I test non richiedono
+Esito del 2026-11-13: `319 passed, 24 skipped` (le 24 prove reali risultano `skipped` senza `PROVA_REALE`). I test non richiedono
 LM Studio: il grafo usa un modello finto e lo strumento un istante fissato.
 
 ### Prove reali con LM Studio

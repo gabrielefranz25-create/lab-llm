@@ -148,7 +148,10 @@ Spunta le caselle - [x] nel piano man mano.
 5. `test(reale)`: `tests/reale/test_mcp_http_reale.py` (orologio e calcolatrice via HTTP).
 6. `build(docker)`: servizio `server-mcp` nel profilo `http`.
 7. `docs`: guide aggiornate.
-- Esiti: `python -m pytest` → 316 passati, 24 skipped; prove reali via HTTP → 2 passate; a mano e in
+8. Revisione finale (agente revisore): `fix(mcp)` perché `avvia_http` segnali un server terminato (es. porta
+   occupata) e fermi gli altri, gestisca SIGTERM (`docker compose down` in 2 s) e non passi `MCP_HTTP_PORTA`;
+   i sottoprocessi stdio ricevono sempre `MCP_TRASPORTO=stdio`.
+- Esiti: `python -m pytest` → 319 passati, 24 skipped; prove reali (`-m reale`) → 24 passate (2 via HTTP); a mano e in
   Docker 7 cataloghi `via http://…` e chiamate a `ora_corrente` e `calcola` riuscite. In Docker la
   prima prova usava l'immagine vecchia dell'assistente (stdio): ricostruita, poi verificata.
 
