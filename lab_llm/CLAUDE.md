@@ -22,6 +22,7 @@ La cartella del progetto è `lab_llm/`. Specifica e piano sono in `lab_llm/docs/
 - Avvio: `python -m agente`. Docker: `docker compose build`, poi `docker compose run --rm assistente`.
 - Servizio FastAPI dell'orologio (variante `fastapi`): `python -m servizio_orologio.api`; in Docker
   `docker compose --profile fastapi up -d orologio-api`.
+- Server MCP via HTTP: `python -m server_mcp.avvia_http`, poi `$env:TRASPORTO_MCP="http"; python -m agente`.
 - Test automatici: `python -m pytest` (le prove reali risultano skipped).
 - Prove reali (LM Studio acceso): `$env:PROVA_REALE="1"; python -m pytest -m reale -v`.
 - Prove reali MCP (anche rete): `$env:PROVA_REALE="1"; python -m pytest tests/reale/test_mcp_reale.py -v -o log_cli=true --log-cli-level=INFO`.
@@ -57,7 +58,8 @@ Un'applicazione da terminale in Python che conversa con un modello locale e:
 - Un file di configurazione di esempio senza credenziali; il file reale resta fuori da Git.
 - Docker Compose per l'applicazione; LM Studio non va containerizzato.
 - Dipendenze motivate, concordate e con versioni fissate.
-- MCP: trasporto stdio; grafo e client restano sincroni, `asyncio` solo in `agente/mcp_ponte.py`
+- MCP: trasporto stdio (default) o Streamable HTTP (`TRASPORTO_MCP=http`, server avviati con
+  `python -m server_mcp.avvia_http`); grafo e client restano sincroni, `asyncio` solo in `agente/mcp_ponte.py`
   (thread dedicato) e nei server; nome, descrizione e schema dei tool solo da `list_tools()`; i server
   non scrivono su stdout (protocollo), log su stderr.
 - Esiti dei tool letti dal modello: `Errore dallo strumento <nome>: ...` e

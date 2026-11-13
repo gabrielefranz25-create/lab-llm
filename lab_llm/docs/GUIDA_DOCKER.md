@@ -48,6 +48,19 @@ Il servizio `orologio-api` è nel profilo `fastapi`, quindi `docker compose run 
 avvia. L'assistente lo raggiunge per nome sulla rete di compose (`http://orologio-api:8001`); la porta
 non è pubblicata sull'host.
 
+Server MCP via Streamable HTTP (blocco C), verificato il 2026-11-13:
+
+```powershell
+docker compose --profile http build                  # anche l'assistente: deve conoscere TRASPORTO_MCP
+docker compose --profile http up -d server-mcp
+"Che ore sono a Tokyo?`nesci" | docker compose run --rm -T -e TRASPORTO_MCP=http -e VARIANTE_OROLOGIO=mcp assistente
+docker compose --profile http down
+```
+
+Nel log dell'assistente le righe del catalogo terminano con `via http://server-mcp:<porta>/mcp`. Se
+manca il `via`, l'immagine dell'assistente è vecchia: ricostruirla (è successo nella prima prova).
+`server-mcp` monta lo stesso volume `note` dell'assistente.
+
 ---
 
 ## 1. Controlli iniziali

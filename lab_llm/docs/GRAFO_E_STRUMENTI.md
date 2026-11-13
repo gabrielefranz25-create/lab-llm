@@ -96,6 +96,11 @@ scelta con `VARIANTE_OROLOGIO` (default `locale`).
 All'avvio il log mostra `orologio: variante=<v> percorso=<…>`. Dopo `bind_tools` il grafo è identico
 nelle tre varianti: il nodo `strumenti` non sa che dietro c'è HTTP o MCP.
 
+### Trasporto MCP (lezione 5, blocco C)
+`TRASPORTO_MCP=stdio` (default): l'agente avvia i server come sottoprocessi. `TRASPORTO_MCP=http`: i
+server sono servizi Streamable HTTP già avviati (`python -m server_mcp.avvia_http`, porte 8101–8107) e
+l'agente si collega a `http://<MCP_HTTP_HOST>:<porta>/mcp`. Catalogo e invocazione sono identici.
+
 ### Percorso di uno strumento MCP
 1. All'avvio, `main.py` apre `ConnessioneMCP` (`agente/mcp_ponte.py`), che lancia i server scelti in `SERVER_MCP` come sottoprocessi **stdio**.
 2. Il ponte legge il catalogo (`list_tools()`) e crea per ogni voce un `StructuredTool` **sincrono**. Nome, descrizione e schema arrivano dal server e non sono mai scritti nell'agente.

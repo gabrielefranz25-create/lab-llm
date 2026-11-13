@@ -34,14 +34,13 @@
   `feat/varianti-orologio`, unito in `dev` dopo la verifica.
 - Modalità concordata il 2026-11-12: **autonomia** («fai tutto»): per ogni blocco/step spec e piano
   scritti e committati senza attendere l'approvazione, resoconto a fine blocco. Push solo su richiesta.
-- Ordine rimasto: blocco C (Streamable HTTP in locale, catalogo identico a stdio), poi lezione 6
-  dallo step 2 (revisore) allo step 9.
+- Blocco C (Streamable HTTP, `TRASPORTO_MCP`) fatto su `feat/mcp-http`. Lezione 5 completa.
+- Ordine rimasto: lezione 6 dallo step 2 (revisore) allo step 9.
 
 ## Prompt da incollare (ripartenza)
 ```
 Leggi il CLAUDE.md e docs/PROSSIMA_SESSIONE.md e controlla lo stato della repository.
-Continuiamo in autonomia dal primo blocco non fatto (blocco C della lezione 5, poi gli step della
-lezione 6): spec e piano in docs/superpowers/, feature branch da dev, test, prove reali con LM Studio,
+Continuiamo in autonomia dal primo step non fatto della lezione 6: spec e piano in docs/superpowers/, feature branch da dev, test, prove reali con LM Studio,
 Docker, documenti aggiornati, merge in dev (niente push).
 ```
 

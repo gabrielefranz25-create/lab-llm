@@ -160,7 +160,7 @@ docker compose run --rm assistente
 python -m pytest
 ```
 
-Esito del 2026-11-13: `288 passed, 22 skipped` (le 22 prove reali risultano `skipped` senza `PROVA_REALE`). I test non richiedono
+Esito del 2026-11-13: `316 passed, 24 skipped` (le 24 prove reali risultano `skipped` senza `PROVA_REALE`). I test non richiedono
 LM Studio: il grafo usa un modello finto e lo strumento un istante fissato.
 
 ### Prove reali con LM Studio
@@ -242,6 +242,27 @@ Un server che non parte non blocca l'agente: compare un WARNING e la chat proseg
 I log del framework dei server sono tenuti a `WARNING` (`FASTMCP_LOG_LEVEL`), così la riga con il
 banner non si mescola alla chat.
 
+### Streamable HTTP al posto di stdio (blocco C)
+
+Gli stessi server possono girare come servizi HTTP locali (porte 8101–8107, solo `127.0.0.1`):
+
+```powershell
+# terminale 1: avvia i server di SERVER_MCP (default tutti) più l'orologio, Ctrl+C per fermarli
+python -m server_mcp.avvia_http
+# terminale 2: l'agente si collega con un URL invece di avviare sottoprocessi
+$env:TRASPORTO_MCP="http"; python -m agente
+```
+
+Il log dell'agente mostra `trasporto MCP: http` e `server MCP <nome>: catalogo [...] via
+http://127.0.0.1:<porta>/mcp`. Il catalogo è identico a quello via stdio (nome, descrizione e schema di
+ogni tool): lo verifica `tests/test_mcp_http.py` per tutti e sette i server. Se un server HTTP è
+spento: `server MCP <nome> non disponibile: …` e l'agente prosegue senza quel server.
+Un singolo server: `$env:MCP_TRASPORTO="http"; python -m server_mcp.calcolatrice` (porta 8104).
+Verificato il 2026-11-13 con «Che ore sono a Tokyo?» e «Quanto fa 15 per 12?», anche in Docker:
+`docker compose --profile http up -d --build server-mcp`, poi
+`docker compose run --rm -e TRASPORTO_MCP=http assistente` (dopo `docker compose build`, perché anche
+l'immagine dell'assistente deve essere aggiornata).
+
 ### Diagnosi per livelli
 
 Quando «non funziona», si risale la catena dal basso: ogni livello presuppone che il precedente sia a posto.
@@ -296,6 +317,7 @@ lab_llm/
 ├── agente/            codice: config, strumenti, mcp_ponte, graph, llm, client, main
 ├── servizio_orologio/ logica condivisa dell'orologio (logica.py) e servizio FastAPI (api.py)
 ├── server_mcp/        server MCP (processi separati): meteo, note, unita, calcolatrice, scadenze, catalogo, orologio;
+│                      avvio.py = stdio o Streamable HTTP; avvia_http.py = tutti i server in HTTP;
 │                      risorse/ = festivita.json, corsi.json
 ├── tests/             test automatici; tests/reale/ = prove con LM Studio (PROVA_REALE=1)
 ├── docs/              COME_FUNZIONA, GUIDA_DOCKER, GUIDA_PASSO_PASSO, PROSSIMA_SESSIONE, specifica e piano (superpowers/)

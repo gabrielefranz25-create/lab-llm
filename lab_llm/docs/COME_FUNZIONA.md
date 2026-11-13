@@ -177,7 +177,8 @@ dentro l'agente. Tre ruoli:
 | **client** | l'oggetto `fastmcp.Client` dentro `agente/mcp_ponte.py` | una sessione con **un** server: chiede il catalogo, invia le chiamate |
 | **server** | `server_mcp/*.py` (sei server) | processi separati che dichiarano i tool e li eseguono |
 
-Il trasporto è **stdio**: il client lancia il server come sottoprocesso (`sys.executable -m
+Il trasporto predefinito è **stdio** (con `TRASPORTO_MCP=http` si usa invece Streamable HTTP: vedi
+sotto «Stdio o Streamable HTTP»): il client lancia il server come sottoprocesso (`sys.executable -m
 server_mcp.meteo`, con `cwd` la cartella `lab_llm/`) e scambia messaggi JSON-RPC su stdin/stdout. Per
 questo i server non scrivono mai su stdout (sarebbe corrompere il protocollo): i loro log vanno su
 stderr.
@@ -203,6 +204,15 @@ risposta     testo del risultato ──► ToolMessage(content=testo, tool_call_
   d'errore, non un'eccezione che rompe il turno.
 - Il nodo `strumenti` del grafo non sa che un tool è MCP: lo invoca come l'orologio. L'unica
   differenza visibile è `origine=mcp:<server>` nel log (nel campo `metadata` del tool).
+
+### Stdio o Streamable HTTP
+Il trasporto decide come viaggiano i messaggi, non che cosa dicono. `server_mcp/avvio.py` fa partire
+ogni server con `MCP_TRASPORTO` (`stdio` o `http`); con HTTP il server ascolta su
+`http://127.0.0.1:<porta>/mcp` ed è avviato a parte (`python -m server_mcp.avvia_http`). Nell'agente
+`TRASPORTO_MCP=http` dà a ogni `ServerMCP` un `url`, e `crea_trasporto` sceglie
+`StreamableHttpTransport` invece di `StdioTransport`. Catalogo, tool sincroni ed esiti restano
+identici (verificato da `tests/test_mcp_http.py`). Cambia la diagnosi: con stdio si controllano
+interprete, percorsi e stdout pulito; con HTTP URL, porta, processo in ascolto e timeout.
 
 ### `tool_call_id` e ID JSON-RPC
 

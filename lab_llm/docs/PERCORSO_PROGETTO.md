@@ -138,6 +138,20 @@ Spunta le caselle - [x] nel piano man mano.
   `python -m agente` e Docker via pipe con «Che ore sono a Tokyo?» nelle tre varianti → `origine=locale`,
   `http:orologio`, `mcp:orologio`; servizio spento → `Errore di collegamento HTTP …`.
 
+### Lezione 5, blocco C (13/11): Streamable HTTP in locale. Branch `feat/mcp-http`
+- Stesso prompt e stessa modalità autonoma del blocco B.
+- Specifica `specs/2026-11-13-mcp-http-design.md` e piano `plans/2026-11-13-mcp-http.md`.
+1. `feat(mcp)`: `server_mcp/avvio.py` (`MCP_TRASPORTO`, porte fisse 8101–8107, percorso `/mcp`) usato dai sette server.
+2. `feat(mcp)`: agente con `TRASPORTO_MCP`/`MCP_HTTP_HOST`, `ServerMCP.url`, `crea_trasporto`, log `via …`.
+3. `test(mcp)`: catalogo identico tra stdio e HTTP per i sette server (`tests/test_mcp_http.py`).
+4. `feat(mcp)`: `python -m server_mcp.avvia_http` avvia tutti i server HTTP.
+5. `test(reale)`: `tests/reale/test_mcp_http_reale.py` (orologio e calcolatrice via HTTP).
+6. `build(docker)`: servizio `server-mcp` nel profilo `http`.
+7. `docs`: guide aggiornate.
+- Esiti: `python -m pytest` → 316 passati, 24 skipped; prove reali via HTTP → 2 passate; a mano e in
+  Docker 7 cataloghi `via http://…` e chiamate a `ora_corrente` e `calcola` riuscite. In Docker la
+  prima prova usava l'immagine vecchia dell'assistente (stdio): ricostruita, poi verificata.
+
 ### Lezione 6: evolvere l'agente. In corso
 Materiale: `materiali/LLM_Lez_6.pdf`. Uno step alla volta, ciascuno con spec, piano, test, prova reale, README e commit.
 
