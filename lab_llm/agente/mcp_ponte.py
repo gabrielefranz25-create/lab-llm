@@ -1,4 +1,5 @@
-"""Ponte MCP: avvia i server stdio e ne espone il catalogo come tool LangChain sincroni.
+"""Ponte MCP: si collega ai server (stdio o Streamable HTTP) e ne espone il catalogo come tool
+LangChain sincroni.
 
 È l'unico modulo asincrono dell'agente. Un thread dedicato esegue un event loop asyncio in cui
 restano aperte le sessioni con i server; il grafo, sincrono, chiama i tool, che inviano la
@@ -16,7 +17,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from fastmcp import Client
-from fastmcp.client.transports import StdioTransport
+from fastmcp.client.transports import ClientTransport, StdioTransport, StreamableHttpTransport
 from fastmcp.exceptions import ToolError
 from langchain_core.tools import BaseTool, StructuredTool
 from mcp.types import TextContent
@@ -29,11 +30,27 @@ CARTELLA_PROGETTO = Path(__file__).resolve().parents[1]
 
 @dataclass(frozen=True)
 class ServerMCP:
-    """Un server MCP da avviare come `sys.executable <argomenti>`, per esempio `-m server_mcp.meteo`."""
+    """Un server MCP: con `url` è un servizio Streamable HTTP già avviato (es.
+    `http://127.0.0.1:8101/mcp`), altrimenti un sottoprocesso stdio `sys.executable <argomenti>`,
+    per esempio `-m server_mcp.meteo`."""
 
     nome: str
     argomenti: tuple[str, ...]
     env: Mapping[str, str] = field(default_factory=dict)
+    url: str | None = None
+
+
+def crea_trasporto(server: ServerMCP) -> ClientTransport:
+    """Trasporto verso il server: cambia come viaggiano i messaggi, non catalogo e invocazione."""
+    if server.url:
+        return StreamableHttpTransport(server.url)
+    return StdioTransport(
+        command=sys.executable,
+        args=list(server.argomenti),
+        env={**os.environ, **server.env},
+        cwd=str(CARTELLA_PROGETTO),
+        keep_alive=False,  # all'uscita dal client il sottoprocesso viene terminato
+    )
 
 
 @dataclass
@@ -101,8 +118,8 @@ class ConnessioneMCP:
         custode.client = client
         self.cataloghi[server.nome] = catalogo
         self.strumenti.extend(self._crea_strumento(server, client, voce) for voce in catalogo)
-        logger.info("server MCP %s: catalogo [%s]", server.nome,
-                    ", ".join(voce.name for voce in catalogo))
+        logger.info("server MCP %s: catalogo [%s] via %s", server.nome,
+                    ", ".join(voce.name for voce in catalogo), server.url or "stdio")
 
     async def _custodisci(self, custode: _Custode) -> None:
         """Coroutine «custode»: apre la sessione, legge il catalogo e la tiene aperta fino alla chiusura.
@@ -110,15 +127,8 @@ class ConnessioneMCP:
         La sessione si apre e si chiude nello stesso task, come richiede anyio.
         """
         server = custode.server
-        trasporto = StdioTransport(
-            command=sys.executable,
-            args=list(server.argomenti),
-            env={**os.environ, **server.env},
-            cwd=str(CARTELLA_PROGETTO),
-            keep_alive=False,  # all'uscita dal client il sottoprocesso viene terminato
-        )
         try:
-            async with Client(trasporto) as client:
+            async with Client(crea_trasporto(server)) as client:
                 catalogo = await client.list_tools()
                 # print(f"[passo] {server.nome}: catalogo con {len(catalogo)} tool")
                 custode.pronto.set_result((client, catalogo))

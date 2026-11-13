@@ -169,3 +169,19 @@ def test_url_e_timeout_del_servizio_orologio():
 def test_timeout_del_servizio_orologio_non_valido():
     with pytest.raises(ErroreConfigurazione, match="OROLOGIO_API_TIMEOUT"):
         carica_config({**MINIMO, "OROLOGIO_API_TIMEOUT": "0"})
+
+
+def test_trasporto_mcp_predefinito_stdio():
+    config = carica_config(MINIMO)
+    assert config.trasporto_mcp == "stdio"
+    assert config.mcp_http_host == "127.0.0.1"
+
+
+def test_trasporto_mcp_http():
+    config = carica_config({**MINIMO, "TRASPORTO_MCP": "HTTP", "MCP_HTTP_HOST": "server-mcp"})
+    assert (config.trasporto_mcp, config.mcp_http_host) == ("http", "server-mcp")
+
+
+def test_trasporto_mcp_sconosciuto():
+    with pytest.raises(ErroreConfigurazione, match="TRASPORTO_MCP deve essere uno tra stdio, http"):
+        carica_config({**MINIMO, "TRASPORTO_MCP": "sse"})

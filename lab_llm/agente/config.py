@@ -11,6 +11,8 @@ LIVELLI_LOG = ("DEBUG", "INFO", "WARNING", "ERROR")
 SERVER_MCP_NOTI = ("meteo", "note", "unita", "calcolatrice", "scadenze", "catalogo")
 # Percorso dello strumento orologio (lezione 5, blocco B): una sola variante attiva per volta.
 VARIANTI_OROLOGIO = ("locale", "fastapi", "mcp")
+# Trasporto verso i server MCP (lezione 5, blocco C): sottoprocessi stdio o servizi Streamable HTTP.
+TRASPORTI_MCP = ("stdio", "http")
 # Ambito dell'agente usato dal router se AMBITO_AGENTE è assente o vuota: l'orologio e i saluti ci
 # sono sempre, poi una frase per ogni server MCP attivo.
 AMBITO_INIZIO = "data e ora attuali in qualsiasi fuso orario"
@@ -55,6 +57,8 @@ class Config:
     variante_orologio: str = "locale"
     orologio_api_url: str = "http://localhost:8001"
     orologio_api_timeout: float = 5.0
+    trasporto_mcp: str = "stdio"
+    mcp_http_host: str = "127.0.0.1"
 
 
 def _leggi(ambiente: Mapping[str, str], nome: str, default: str | None = None) -> str:
@@ -109,12 +113,11 @@ def _livello_log(ambiente: Mapping[str, str], nome: str, default: str) -> str:
     return testo
 
 
-def _variante_orologio(ambiente: Mapping[str, str]) -> str:
-    testo = _leggi(ambiente, "VARIANTE_OROLOGIO", "locale").lower()
-    if testo not in VARIANTI_OROLOGIO:
-        raise ErroreConfigurazione(
-            f"VARIANTE_OROLOGIO deve essere uno tra {', '.join(VARIANTI_OROLOGIO)}, non '{testo}'."
-        )
+def _scelta(ambiente: Mapping[str, str], nome: str, ammessi: tuple[str, ...]) -> str:
+    """Valore (in minuscolo) tra quelli ammessi; il primo è il default."""
+    testo = _leggi(ambiente, nome, ammessi[0]).lower()
+    if testo not in ammessi:
+        raise ErroreConfigurazione(f"{nome} deve essere uno tra {', '.join(ammessi)}, non '{testo}'.")
     return testo
 
 
@@ -165,7 +168,9 @@ def carica_config(ambiente: Mapping[str, str] | None = None) -> Config:
         note_db=_leggi(ambiente, "NOTE_DB", "dati/note.sqlite3"),
         server_mcp=server_mcp,
         ambito=_leggi(ambiente, "AMBITO_AGENTE", ambito_predefinito(server_mcp)),
-        variante_orologio=_variante_orologio(ambiente),
+        variante_orologio=_scelta(ambiente, "VARIANTE_OROLOGIO", VARIANTI_OROLOGIO),
         orologio_api_url=_leggi(ambiente, "OROLOGIO_API_URL", "http://localhost:8001"),
         orologio_api_timeout=_secondi(ambiente, "OROLOGIO_API_TIMEOUT", 5.0),
+        trasporto_mcp=_scelta(ambiente, "TRASPORTO_MCP", TRASPORTI_MCP),
+        mcp_http_host=_leggi(ambiente, "MCP_HTTP_HOST", "127.0.0.1"),
     )

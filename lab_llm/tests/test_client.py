@@ -197,6 +197,21 @@ def test_server_da_config_orologio_mcp_solo_con_la_variante_mcp():
     assert orologio.env["FASTMCP_LOG_LEVEL"] == "WARNING"
 
 
+def test_server_da_config_stdio_senza_url():
+    assert all(s.url is None for s in server_da_config(_config(VARIANTE_OROLOGIO="mcp")))
+
+
+def test_server_da_config_http_con_url_per_ogni_server():
+    servers = server_da_config(_config(TRASPORTO_MCP="http", MCP_HTTP_HOST="server-mcp",
+                                       VARIANTE_OROLOGIO="mcp"))
+    assert {s.nome: s.url for s in servers} == {
+        "orologio": "http://server-mcp:8107/mcp", "meteo": "http://server-mcp:8101/mcp",
+        "note": "http://server-mcp:8102/mcp", "unita": "http://server-mcp:8103/mcp",
+        "calcolatrice": "http://server-mcp:8104/mcp", "scadenze": "http://server-mcp:8105/mcp",
+        "catalogo": "http://server-mcp:8106/mcp",
+    }
+
+
 def test_strumenti_orologio_locale(caplog):
     with caplog.at_level(logging.INFO, logger="agente.main"):
         (strumento,) = strumenti_orologio(_config())

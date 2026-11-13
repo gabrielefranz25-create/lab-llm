@@ -2,6 +2,7 @@
 
 import logging
 import sys
+from dataclasses import replace
 
 from langchain_core.tools import BaseTool
 
@@ -11,6 +12,7 @@ from agente.graph import costruisci_grafo, limite_ricorsione
 from agente.llm import ErroreModello, crea_modello, crea_riassuntore, crea_router, verifica_modello
 from agente.mcp_ponte import ConnessioneMCP, ServerMCP, unisci_strumenti
 from agente.strumenti import crea_ora_corrente, crea_ora_corrente_http
+from server_mcp.avvio import PERCORSO_HTTP, PORTE_HTTP
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +47,9 @@ def server_da_config(config: Config) -> list[ServerMCP]:
     if config.variante_orologio == "mcp":  # variante 03: l'orologio arriva dal catalogo del server
         servers.insert(0, ServerMCP("orologio", ("-m", "server_mcp.orologio"),
                                     {**comuni, "FUSO_ORARIO": config.fuso_orario_predefinito}))
+    if config.trasporto_mcp == "http":  # servizi già avviati (python -m server_mcp.avvia_http)
+        servers = [replace(s, url=f"http://{config.mcp_http_host}:{PORTE_HTTP[s.nome]}{PERCORSO_HTTP}")
+                   for s in servers]
     return servers
 
 
@@ -78,6 +83,7 @@ def main() -> int:
                 config.lm_base_url, config.max_passi_strumento, config.max_messaggi_contesto,
                 config.messaggi_da_tenere)
     logger.info("ambito del router: %s", config.ambito)
+    logger.info("trasporto MCP: %s", config.trasporto_mcp)
     try:
         verifica_modello(config)
     except ErroreModello as errore:

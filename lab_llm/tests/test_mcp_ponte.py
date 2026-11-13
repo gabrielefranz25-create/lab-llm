@@ -110,3 +110,21 @@ def test_discovery_note_via_stdio(tmp_path):
         assert all(t.metadata["origine"] == "mcp:note" for t in connessione.strumenti)
         assert "salvata" in strumento(connessione, "aggiungi_nota").invoke({"testo": "prova"})
         assert "prova" in strumento(connessione, "elenca_note").invoke({})
+
+
+def test_trasporto_scelto_dal_server():
+    from fastmcp.client.transports import StdioTransport, StreamableHttpTransport
+
+    from agente.mcp_ponte import crea_trasporto
+
+    assert isinstance(crea_trasporto(METEO), StdioTransport)
+    http = crea_trasporto(ServerMCP("meteo", ("-m", "server_mcp.meteo"), url="http://127.0.0.1:8101/mcp"))
+    assert isinstance(http, StreamableHttpTransport)
+    assert http.url == "http://127.0.0.1:8101/mcp"
+
+
+def test_server_http_spento(caplog):
+    spento = ServerMCP("calcolatrice", (), url="http://127.0.0.1:9/mcp")  # porta 9: nessun servizio
+    with caplog.at_level(logging.WARNING), ConnessioneMCP([spento], timeout=10) as connessione:
+        assert connessione.strumenti == []
+    assert "server MCP calcolatrice non disponibile" in caplog.text
