@@ -33,7 +33,8 @@ def server_da_config(config: Config) -> list[ServerMCP]:
     """Server MCP da avviare, secondo SERVER_MCP. Ai sottoprocessi passano il livello di log
     dell'agente (per i log del server) e FASTMCP_LOG_LEVEL=WARNING (per tacere la riga
     "Starting MCP server" del framework, che finirebbe sul terminale della chat)."""
-    comuni = {"LOG_LEVEL": config.log_level, "FASTMCP_LOG_LEVEL": "WARNING"}
+    # MCP_TRASPORTO=stdio esplicito: un valore rimasto nel .env non trasforma i sottoprocessi in server HTTP.
+    comuni = {"LOG_LEVEL": config.log_level, "FASTMCP_LOG_LEVEL": "WARNING", "MCP_TRASPORTO": "stdio"}
     disponibili = {
         "meteo": ServerMCP("meteo", ("-m", "server_mcp.meteo"),
                            {**comuni, "METEO_TIMEOUT": str(config.meteo_timeout)}),

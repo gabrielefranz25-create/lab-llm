@@ -44,28 +44,63 @@ def test_variabili_dell_ambiente_conservate():
     assert env["MCP_HTTP_ASCOLTO"] == "0.0.0.0"
 
 
-def test_main_termina_tutti_i_processi(monkeypatch):
-    avviati = []
+class ProcessoFinto:
+    """Processo che termina da solo dopo `vita` controlli (None = mai) o quando viene terminato."""
 
-    class ProcessoFinto:
-        def __init__(self, comando, **_):
-            self.comando, self.terminato = comando, False
-            avviati.append(self)
+    def __init__(self, comando, vita=None):
+        self.comando, self.vita, self.terminato, self.controlli = comando, vita, False, 0
 
-        def wait(self, timeout=None):
-            if not self.terminato:
-                raise KeyboardInterrupt  # Ctrl+C mentre si aspetta il primo server
+    def poll(self):
+        if self.terminato:
             return 0
+        self.controlli += 1
+        return 1 if self.vita is not None and self.controlli > self.vita else None
 
-        def terminate(self):
-            self.terminato = True
+    def wait(self, timeout=None):
+        return self.poll()
 
-        def poll(self):
-            return 0 if self.terminato else None
+    def terminate(self):
+        self.terminato = True
 
-    monkeypatch.setattr(avvia_http.subprocess, "Popen", ProcessoFinto)
+    def kill(self):
+        self.terminato = True
+
+
+def _main_con(monkeypatch, vite, interrompi_dopo=None):
+    """Esegue main() con processi finti; `vite` per nome di server; Ctrl+C dopo N attese."""
+    avviati = []
+    attese = {"n": 0}
+
+    def popen(comando, **_):
+        avviati.append(ProcessoFinto(comando, vite.get(comando[-1].rsplit(".", 1)[1])))
+        return avviati[-1]
+
+    def attendi(_secondi):
+        attese["n"] += 1
+        if interrompi_dopo is not None and attese["n"] > interrompi_dopo:
+            raise KeyboardInterrupt
+
+    monkeypatch.setattr(avvia_http.subprocess, "Popen", popen)
     monkeypatch.setattr(avvia_http, "load_dotenv", lambda **_: None)
+    monkeypatch.setattr(avvia_http.time, "sleep", attendi)
     monkeypatch.setenv("SERVER_MCP", "unita")
-    assert avvia_http.main() == 0
+    return avvia_http.main(), avviati
+
+
+def test_main_ctrl_c_termina_tutti_i_processi(monkeypatch):
+    codice, avviati = _main_con(monkeypatch, {}, interrompi_dopo=3)
+    assert codice == 0
     assert [p.comando[-1] for p in avviati] == ["server_mcp.unita", "server_mcp.orologio"]
     assert all(p.terminato for p in avviati)
+
+
+def test_main_server_terminato_ferma_gli_altri(monkeypatch, capsys):
+    codice, avviati = _main_con(monkeypatch, {"orologio": 2})
+    assert codice == 1
+    assert "server orologio terminato (codice 1)" in capsys.readouterr().err
+    assert avviati[0].terminato  # unita fermato
+
+
+def test_porta_singola_non_passata_ai_server():
+    (_, _, env), *_ = processi_da_avviare({"MCP_HTTP_PORTA": "9999"})
+    assert "MCP_HTTP_PORTA" not in env

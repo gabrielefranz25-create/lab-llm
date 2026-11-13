@@ -197,6 +197,11 @@ def test_server_da_config_orologio_mcp_solo_con_la_variante_mcp():
     assert orologio.env["FASTMCP_LOG_LEVEL"] == "WARNING"
 
 
+def test_server_da_config_stdio_forza_il_trasporto_dei_sottoprocessi():
+    # un MCP_TRASPORTO=http rimasto nel .env non deve trasformare i sottoprocessi in server HTTP
+    assert all(s.env["MCP_TRASPORTO"] == "stdio" for s in server_da_config(_config(VARIANTE_OROLOGIO="mcp")))
+
+
 def test_server_da_config_stdio_senza_url():
     assert all(s.url is None for s in server_da_config(_config(VARIANTE_OROLOGIO="mcp")))
 
