@@ -37,3 +37,15 @@ def test_chiamata_senza_argomenti_usa_il_predefinito():
 def test_fuso_non_valido_diventa_tool_error():
     with pytest.raises(ToolError, match="fuso orario 'Mars/Olympus' non riconosciuto"):
         _esegui(lambda c: c.call_tool("ora_corrente", {"fuso_orario": "Mars/Olympus"}))
+
+
+def test_stesso_contratto_della_variante_locale():
+    """Descrizione e default del server devono restare uguali a quelli della variante locale:
+    il confronto della lezione vale solo a parità di contratto."""
+    from agente.strumenti import crea_ora_corrente
+
+    (voce,) = _esegui(lambda c: c.list_tools(), fuso_predefinito="Asia/Tokyo")
+    locale = crea_ora_corrente("Asia/Tokyo")
+    assert voce.description == locale.description
+    assert voce.input_schema["properties"]["fuso_orario"]["default"] == "Asia/Tokyo"
+    assert locale.args["fuso_orario"]["default"] == "Asia/Tokyo"

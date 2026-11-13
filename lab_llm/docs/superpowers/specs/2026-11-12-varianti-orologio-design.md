@@ -58,7 +58,7 @@ il risultato rientra come `ToolMessage` con lo stesso `tool_call_id`.
 - **`agente/config.py`**: `VARIANTE_OROLOGIO` (`locale` | `fastapi` | `mcp`, default `locale`,
   valori diversi → `ErroreConfigurazione`); `OROLOGIO_API_URL` (default `http://localhost:8001`);
   `OROLOGIO_API_TIMEOUT` (secondi, default 5, come nella slide) per il wrapper.
-- **`agente/main.py`**: `strumenti_orologio(config, connessione)` sceglie la variante; con `mcp`
+- **`agente/main.py`**: `strumenti_orologio(config)` sceglie la variante; con `mcp`
   aggiunge `ServerMCP("orologio", ("-m", "server_mcp.orologio"), {..., "FUSO_ORARIO": ...})` in
   testa ai server da avviare e il tool arriva dal catalogo. Log di avvio:
   `orologio: variante=<v> percorso=<funzione locale | GET <url>/ora | server MCP orologio (stdio)>`.
