@@ -210,3 +210,12 @@ def test_file_delle_preferenze():
 def test_ambito_predefinito_comprende_i_prompt_mcp():
     # Step 5: /prompt spiega e /prompt riassumi_conversazione passano dal router come le domande.
     assert "spiegazioni di concetti" in AMBITO_PREDEFINITO and "riassunti della conversazione" in AMBITO_PREDEFINITO
+
+
+def test_indirizzi_del_servizio_dell_agente():
+    config = carica_config(MINIMO)
+    assert (config.agente_ascolto, config.agente_porta, config.agente_url) == (
+        "127.0.0.1", 8000, "http://127.0.0.1:8000")
+    altra = carica_config({**MINIMO, "AGENTE_ASCOLTO": "0.0.0.0", "AGENTE_PORTA": "9000",
+                           "AGENTE_URL": "http://agente:9000"})
+    assert (altra.agente_ascolto, altra.agente_porta, altra.agente_url) == ("0.0.0.0", 9000, "http://agente:9000")

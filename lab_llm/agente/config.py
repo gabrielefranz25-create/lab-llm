@@ -63,6 +63,9 @@ class Config:
     mcp_http_host: str = "127.0.0.1"
     max_revisioni: int = 2
     preferenze_file: str = "server_mcp/risorse/preferenze.json"
+    agente_ascolto: str = "127.0.0.1"
+    agente_porta: int = 8000
+    agente_url: str = "http://127.0.0.1:8000"
 
 
 def _leggi(ambiente: Mapping[str, str], nome: str, default: str | None = None) -> str:
@@ -179,4 +182,7 @@ def carica_config(ambiente: Mapping[str, str] | None = None) -> Config:
         mcp_http_host=_leggi(ambiente, "MCP_HTTP_HOST", "127.0.0.1"),
         max_revisioni=_intero(ambiente, "MAX_REVISIONI", 2, minimo=0),
         preferenze_file=_leggi(ambiente, "PREFERENZE_FILE", "server_mcp/risorse/preferenze.json"),
+        agente_ascolto=_leggi(ambiente, "AGENTE_ASCOLTO", "127.0.0.1"),
+        agente_porta=_intero(ambiente, "AGENTE_PORTA", 8000, minimo=1),
+        agente_url=_leggi(ambiente, "AGENTE_URL", "http://127.0.0.1:8000"),
     )
