@@ -45,9 +45,10 @@ def test_json_non_valido_solleva_errore():
 
 def test_istruzioni_per_il_prompt():
     testo = istruzioni(Preferenze("inglese", "America/New_York", "dettagliato"))
-    assert testo.startswith("Preferenze dell'utente (resource utente://preferenze)")
-    assert "rispondi sempre in inglese" in testo and "dettagliato" in testo
-    assert "America/New_York" in testo
+    assert testo == ("Preferenze dell'utente: rispondi sempre in inglese, in modo dettagliato, "
+                     "con spiegazioni ed esempi.")
+    # Il fuso non sta in questa riga: arriva al prompt come fuso predefinito (vedi la docstring).
+    assert "America/New_York" not in testo and "resource" not in testo
     assert "breve" in istruzioni(PREDEFINITE)
 
 

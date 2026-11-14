@@ -28,9 +28,10 @@ sessione successiva si comporta diversamente senza toccare il codice.
 - **Effetti**: il fuso delle preferenze diventa il fuso predefinito della sessione
   (`replace(config, fuso_orario_predefinito=…)` prima di creare strumenti, server e grafo: orologio nelle
   tre varianti, `scadenze`, prompt). Lingua e stile diventano la prima riga del prompt di sistema:
-  `Preferenze dell'utente (resource utente://preferenze): rispondi sempre in <lingua>, <stile>. Fuso
-  orario predefinito dell'utente: <fuso>.` La riga «Rispondi in italiano, in modo breve e chiaro» e
-  «(ora italiana)» escono da `PROMPT_SISTEMA`.
+  `Preferenze dell'utente: rispondi sempre in <lingua>, <stile>.` (il fuso arriva al prompt come fuso
+  predefinito). Una prima versione con l'URI della resource, «(stile …)» e il fuso nella riga faceva
+  inventare l'ora a gemma-4-e2b (0 chiamate a `ora_corrente` su 3; 3 su 3 con la riga asciutta).
+  La riga «Rispondi in italiano, in modo breve e chiaro» e «(ora italiana)» escono da `PROMPT_SISTEMA`.
 - La resource **non** è un tool: il server `utente` non ha voci in `list_tools()` e nulla passa a
   `bind_tools`. La connessione per le preferenze è separata da quella dei tool (si chiude subito):
   serve leggere il fuso prima di avviare gli altri server.
