@@ -54,11 +54,24 @@ class ComandiPrompt:
         righe.append(USO)
         return "\n".join(righe)
 
+    def catalogo_json(self) -> list[dict]:
+        """Catalogo come dati semplici (per GET /prompts del servizio HTTP)."""
+        return [{"nome": p.name, "descrizione": p.description or "",
+                 "argomenti": [{"nome": a.name, "descrizione": a.description or "", "obbligatorio": bool(a.required)}
+                               for a in p.arguments or []]}
+                for p in (self.catalogo or {}).values()]
+
     def richiama(self, riga: str) -> list[AnyMessage]:
         """Da `/prompt nome a=b ...` ai messaggi compilati dal server. Solleva ErroreComando."""
         if not self.disponibili:
             raise ErroreComando(f"Prompt non disponibili: server {self.server} non raggiungibile.")
-        nome, argomenti = self._interpreta(riga)
+        return self.compila(*interpreta_riga(riga))
+
+    def compila(self, nome: str, argomenti: dict[str, str]) -> list[AnyMessage]:
+        """Controlla nome e argomenti rispetto al catalogo (prompts/list), poi chiede i messaggi al server."""
+        if not self.disponibili:
+            raise ErroreComando(f"Prompt non disponibili: server {self.server} non raggiungibile.")
+        self._controlla(nome, argomenti)
         try:
             messaggi = self.connessione.ottieni_prompt(self.server, nome, argomenti)
         except ErroreMCP as errore:
@@ -70,28 +83,32 @@ class ComandiPrompt:
             logger.info("prompt: messaggio %d (%s): %s", i, ruolo, testo.replace("\n", " "))
         return [AIMessage(testo) if ruolo == "assistant" else HumanMessage(testo) for ruolo, testo in messaggi]
 
-    def _interpreta(self, riga: str) -> tuple[str, dict[str, str]]:
-        """Nome e argomenti, controllati rispetto al catalogo (prompts/list)."""
-        try:
-            parti = shlex.split(riga)
-        except ValueError:
-            raise ErroreComando(f"Virgolette non chiuse. {USO}") from None
-        if len(parti) < 2:
-            raise ErroreComando(USO)
-        nome, *coppie = parti[1:]
+    def _controlla(self, nome: str, argomenti: dict[str, str]) -> None:
         prompt = self.catalogo.get(nome)
         if prompt is None:
             raise ErroreComando(f"Prompt sconosciuto: {nome}. Disponibili: {', '.join(self.catalogo)}.")
         ammessi = {a.name: a for a in prompt.arguments or []}
-        argomenti: dict[str, str] = {}
-        for coppia in coppie:
-            chiave, uguale, valore = coppia.partition("=")
-            if not uguale or not chiave:
-                raise ErroreComando(f"'{coppia}': atteso nome=valore. {USO}")
-            if chiave not in ammessi:
-                raise ErroreComando(f"Argomento sconosciuto: {chiave}. Ammessi: {', '.join(ammessi)}.")
-            argomenti[chiave] = valore
+        sconosciuti = [chiave for chiave in argomenti if chiave not in ammessi]
+        if sconosciuti:
+            raise ErroreComando(f"Argomento sconosciuto: {', '.join(sconosciuti)}. Ammessi: {', '.join(ammessi)}.")
         mancanti = [n for n, a in ammessi.items() if a.required and n not in argomenti]
         if mancanti:
             raise ErroreComando(f"Argomento obbligatorio mancante: {', '.join(mancanti)}.")
-        return nome, argomenti
+
+
+def interpreta_riga(riga: str) -> tuple[str, dict[str, str]]:
+    """`/prompt nome a=b c="d e"` → (nome, argomenti), senza catalogo: usata anche dalla CLI remota."""
+    try:
+        parti = shlex.split(riga)
+    except ValueError:
+        raise ErroreComando(f"Virgolette non chiuse. {USO}") from None
+    if len(parti) < 2:
+        raise ErroreComando(USO)
+    nome, *coppie = parti[1:]
+    argomenti: dict[str, str] = {}
+    for coppia in coppie:
+        chiave, uguale, valore = coppia.partition("=")
+        if not uguale or not chiave:
+            raise ErroreComando(f"'{coppia}': atteso nome=valore. {USO}")
+        argomenti[chiave] = valore
+    return nome, argomenti
