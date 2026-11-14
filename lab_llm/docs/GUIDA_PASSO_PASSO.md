@@ -117,6 +117,7 @@ nello stesso messaggio, log, prompt e finestra inviati al modello).
   nodo `compatta` tra `START` e `llm`: oltre soglia riassume i vecchi e restituisce
   `RemoveMessage(id=REMOVE_ALL_MESSAGES)` + riassunto (`SystemMessage`, `name="riassunto"`) + recenti;
   il nodo `llm` unisce il riassunto al prompt di sistema. Con `riassuntore=None` non compatta.
+  (Dalla lezione 6, step 3, il riassunto è il campo `riassunto` dello stato: vedi `COME_FUNZIONA.md`.)
 - **`tests/test_compatta.py`**: sotto/sopra soglia, taglio, riassunto precedente, riassunto inviato al
   modello, errore del riassuntore, nessun riassuntore.
 

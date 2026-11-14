@@ -21,7 +21,8 @@
 
 1. Il client legge la domanda (`Tu> ...`) e invoca il grafo con la cronologia più la nuova domanda.
 2. Il nodo `compatta` controlla la lunghezza della cronologia: oltre `MAX_MESSAGGI_CONTESTO` messaggi
-   fa riassumere al modello quelli vecchi e tiene solo il riassunto più gli ultimi `MESSAGGI_DA_TENERE`.
+   fa riassumere al modello quelli vecchi, tiene gli ultimi `MESSAGGI_DA_TENERE` e scrive il riassunto
+   nel campo `riassunto` dello stato.
 3. Il nodo `router` chiede al modello (senza strumenti, con output strutturato) se la domanda rientra
    nell'ambito `AMBITO_AGENTE`. Se è `fuori_ambito`, il nodo `rifiuto` aggiunge un messaggio fisso e il
    turno finisce senza passare dall'agente; se è `conversazione` si prosegue.
@@ -35,7 +36,7 @@
    risultato alla cronologia; poi si torna al nodo `llm`, che ora vede l'ora vera e risponde.
 7. Se il modello continua a chiedere strumenti oltre `MAX_PASSI_STRUMENTO` volte, il nodo `limite`
    chiude il turno con un messaggio di scuse.
-8. Il client salva la cronologia restituita dal grafo (già compattata) e ripropone il prompt.
+8. Il client salva la cronologia (già compattata) e il riassunto restituiti dal grafo e ripropone il prompt.
 
 ## Moduli
 
@@ -117,6 +118,7 @@ class AgentState(TypedDict):
     passi_strumento: int                                   # giri di strumento nel turno corrente
     categoria: str                                         # decisione del router per il turno corrente
     revisioni: int                                         # revisioni chieste dal revisore nel turno
+    riassunto: str                                         # riassunto dei messaggi vecchi (step 3)
 ```
 
 - `messages` usa il reducer `add_messages`: ogni nodo restituisce solo i messaggi **nuovi**, che
@@ -124,6 +126,8 @@ class AgentState(TypedDict):
 - `passi_strumento` non ha reducer: il valore restituito sostituisce il precedente. Il client lo
   riparte da 0 a ogni domanda.
 - `categoria` non ha reducer: la scrive il nodo `router` a ogni turno (`conversazione` o `fuori_ambito`).
+- `riassunto` non ha reducer: lo scrive `compatta`, e il nuovo sostituisce il vecchio (che il
+  riassuntore ha già incorporato). Non sta in `messages`; il client lo conserva tra i turni.
 - `revisioni` non ha reducer: la incrementa il nodo `revisore` quando rimanda la risposta all'agente;
   il client la riparte da 0 a ogni domanda.
 - Il prompt di sistema **non** sta nello stato: il nodo `llm` lo mette in testa a ogni chiamata.
@@ -132,10 +136,10 @@ class AgentState(TypedDict):
 
 | Nodo | Che cosa fa | Restituisce |
 |---|---|---|
-| `compatta` | se i messaggi sono più di `MAX_MESSAGGI_CONTESTO`, li divide in vecchi e recenti (`dividi_cronologia`, taglio su un `HumanMessage`), manda i vecchi come testo (`trascrivi`) al riassuntore senza strumenti e sostituisce la cronologia; log INFO | `{}` oppure `{"messages": [RemoveMessage(REMOVE_ALL_MESSAGES), riassunto, *recenti]}` |
+| `compatta` | se i messaggi sono più di `MAX_MESSAGGI_CONTESTO`, li divide in vecchi e recenti (`dividi_cronologia`, taglio su un `HumanMessage`), manda i vecchi come testo (`trascrivi`) (con l'eventuale riassunto precedente) al riassuntore senza strumenti, toglie i vecchi e scrive il campo `riassunto`; log INFO prima/dopo | `{}` oppure `{"messages": [RemoveMessage(REMOVE_ALL_MESSAGES), *recenti], "riassunto": nuovo}` |
 | `router` | manda al router (stesso modello senza strumenti, `with_structured_output(DecisioneRouter)`) il prompt con l'ambito e la trascrizione degli ultimi 4 messaggi; log INFO con categoria, motivo e destinazione; errore o output non valido → WARNING e `conversazione`; senza router sempre `conversazione` | `{"categoria": "conversazione" \| "fuori_ambito"}` |
 | `rifiuto` | aggiunge «Mi dispiace, posso aiutarti solo con: {ambito}.» senza chiamare il modello | `{"messages": [AIMessage]}` |
-| `llm` | invia `[prompt di sistema + riassunto] + finestra_contesto(messages)` al modello, che ha già lo strumento collegato (`bind_tools`) | `{"messages": [AIMessage]}` |
+| `llm` | invia `[prompt di sistema + campo riassunto] + finestra_contesto(messages)` al modello, che ha già lo strumento collegato (`bind_tools`) | `{"messages": [AIMessage]}` |
 | `strumenti` | esegue **ogni** tool_call dell'ultimo messaggio; scrive un log INFO per ciascuna; uno strumento sconosciuto, argomenti sbagliati o argomenti che non sono JSON valido (le `invalid_tool_calls` di LangChain) diventano un testo d'errore, non un'eccezione | `{"messages": [ToolMessage, ...], "passi_strumento": passi + 1}` |
 | `limite` | risponde «Non eseguito» a ogni tool_call rimasta in sospeso (altrimenti la cronologia non sarebbe valida per l'API) e aggiunge il messaggio per l'utente; log WARNING | `{"messages": [ToolMessage, ..., AIMessage]}` |
 | `revisore` | manda al revisore (stesso modello senza strumenti, `with_structured_output(DecisioneRevisore)`) `PROMPT_REVISORE` e un messaggio con la domanda del turno e la risposta proposta; log INFO con giudizio, motivo e destinazione; se non coerente e sotto `MAX_REVISIONI` aggiunge la nota del revisore (`HumanMessage` di nome `revisore`, non un `SystemMessage`: alcuni modelli ne accettano uno solo, in testa); al limite WARNING; errore o output non valido → WARNING e risposta accettata | `{}` oppure `{"messages": [HumanMessage], "revisioni": revisioni + 1}` |
@@ -322,14 +326,19 @@ strumento assente confonde il modello.
 - Restano gli ultimi `MESSAGGI_DA_TENERE` messaggi (default 6), con l'inizio spostato in avanti fino
   a un `HumanMessage`: una tool_call non viene mai separata dalla sua risposta.
 - I messaggi vecchi diventano un testo semplice (`Utente: ...`, `Assistente: ...`, `Strumento: ...`,
-  `Riassunto precedente: ...`) e vanno a un **riassuntore**: lo stesso modello ma **senza strumenti**
+  `Revisore: ...`), preceduto da `Riassunto precedente: ...` se c'è, e vanno a un **riassuntore**: lo stesso modello ma **senza strumenti**
   (`crea_riassuntore`), così non può chiedere l'ora invece di riassumere.
-- Il riassunto diventa un `SystemMessage` con `name="riassunto"` in testa alla cronologia. Per
-  sostituire la cronologia il nodo restituisce `RemoveMessage(id=REMOVE_ALL_MESSAGES)` seguito dai
-  messaggi da tenere: è il modo previsto da LangGraph per riscrivere una lista con `add_messages`.
-- Alla compattazione successiva il riassunto vecchio entra nel testo da riassumere: ce n'è sempre uno solo.
-- Il nodo `llm` unisce il riassunto al prompt di sistema: un solo messaggio di sistema in testa, perché
-  alcuni modelli non ne accettano altri.
+- Dalla lezione 6 (step 3) il riassunto è il **campo `riassunto` dello stato**, non più un
+  `SystemMessage` nella cronologia. Per togliere i messaggi vecchi il nodo restituisce
+  `RemoveMessage(id=REMOVE_ALL_MESSAGES)` seguito dai messaggi da tenere: è il modo previsto da
+  LangGraph per riscrivere una lista con `add_messages`.
+- Alla compattazione successiva il riassunto vecchio entra nel testo da riassumere e il nuovo lo
+  sostituisce: il campo viene aggiornato, non accumulato.
+- Log INFO `riassunto: messaggi prima=9 dopo=3 (riassunti 6, tenuti 3)`; sotto la soglia nessuna
+  chiamata al modello (log DEBUG `riassunto: 5 messaggi, sotto la soglia di 20, …`).
+- Il nodo `llm` aggiunge il riassunto in coda al prompt di sistema: un solo messaggio di sistema in
+  testa, perché alcuni modelli non ne accettano altri. Anche il router lo riceve: senza, dopo la
+  compressione «Come mi chiamo?» veniva rifiutata come fuori ambito.
 - Se LM Studio non risponde (`openai.APIError`) o il riassunto è vuoto: log WARNING, cronologia
   lasciata intera; resta la finestra scorrevole qui sotto.
 - Prova reale: dopo cinque domande con soglia 6, `google/gemma-4-e2b` risponde ancora a «Come mi
@@ -362,7 +371,7 @@ stampata.
 | giudizio del revisore | INFO | `revisore: coerente=no motivo=La risposta tratta solo l'ora a Tokyo e ignora il calcolo. -> agente (revisione 1 di 2)` |
 | limite di revisioni | WARNING | `revisore: limite di 2 revisioni raggiunto, restituita l'ultima risposta` |
 | revisore non riuscito | WARNING | `revisore non riuscito, risposta accettata: Connection error.` |
-| cronologia compattata | INFO | `compattati 16 messaggi, tenuti 5` |
+| cronologia compattata | INFO | `riassunto: messaggi prima=21 dopo=5 (riassunti 16, tenuti 5)` |
 | riassunto non riuscito | WARNING | `riassunto non riuscito, cronologia lasciata intera: Connection error.` |
 | chiamata a uno strumento | INFO | `strumento=ora_corrente origine=locale call_id=... argomenti={"fuso_orario": "Asia/Tokyo"} esito=ok risultato=Fuso orario: Asia/Tokyo ...` |
 | chiamata a un tool MCP | INFO | `strumento=meteo_attuale origine=mcp:meteo call_id=... argomenti={"citta": "Udine"} esito=ok risultato=...` |

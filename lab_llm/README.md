@@ -4,7 +4,9 @@ Chat da terminale in Python che usa un grafo LangGraph esplicito per parlare con
 **LM Studio** sull'host. Il modello può chiedere l'ora con lo strumento `ora_corrente`, che il
 programma esegue davvero e che indica sempre il fuso orario (predefinito `Europe/Rome`).
 La cronologia resta in memoria per la durata della sessione: non viene salvata. Quando diventa lunga,
-il nodo `compatta` la fa riassumere al modello e tiene solo il riassunto e gli ultimi messaggi.
+il nodo `compatta` la fa riassumere al modello e tiene solo gli ultimi messaggi; il riassunto è un campo
+dello stato (`riassunto`), aggiornato a ogni compressione, che il client ripassa al grafo a ogni turno.
+Nel log: `riassunto: messaggi prima=N dopo=M (riassunti K, tenuti M)`.
 
 Dalla lezione 5 l'assistente usa anche strumenti **MCP**: due server locali, avviati come
 sottoprocessi, che l'agente scopre da sé leggendone il catalogo. Il server `meteo` offre
@@ -212,7 +214,19 @@ $env:PROVA_REALE="1"; python -m pytest tests/reale/test_revisore_reale.py -v -o 
 Remove-Item Env:PROVA_REALE
 ```
 
-Esito del 2026-11-14: `4 passed` in circa 3 minuti e mezzo. Nella quarta prova il log mostra
+Prova reale del riassunto (lezione 6, step 3): soglia 6, il nome detto al primo turno è ancora usato dopo
+la compressione, ma sta solo nel campo `riassunto`:
+
+```powershell
+$env:PROVA_REALE="1"; python -m pytest tests/reale/test_lm_studio.py -k compattazione -v -o log_cli=true --log-cli-level=INFO
+Remove-Item Env:PROVA_REALE
+```
+
+Esito del 2026-11-14: `1 passed` con `riassunto: messaggi prima=7 dopo=1 (riassunti 6, tenuti 1)`. A mano,
+con `$env:MAX_MESSAGGI_CONTESTO="6"; $env:MESSAGGI_DA_TENERE="2"; python -m agente`, dopo due compressioni
+«Come mi chiamo e dove vivo?» → «Ti chiami Gabriele e vivi a Udine.».
+
+Esito delle prove del revisore del 2026-11-14: `4 passed` in circa 3 minuti e mezzo. Nella quarta prova il log mostra
 `revisore: coerente=no motivo=La risposta tratta solo la prima parte della domanda (l'ora a Tokyo) e
 ignora completamente la seconda parte … -> agente (revisione 1 di 2)`, poi `ora_corrente` e
 `calcola("15*12")`, poi `revisore: coerente=si`.

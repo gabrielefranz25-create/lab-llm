@@ -42,7 +42,8 @@
 ## Stato al 2026-11-14 (step 2 fatto)
 - Step 2 (revisore) su `feat/revisore`, unito in `dev`: nodo `revisore` dopo l'agente, `MAX_REVISIONI`
   (default 2), nota del revisore nella cronologia. Prove reali in `tests/reale/test_revisore_reale.py`.
-- Prossimo: step 3 (riassunto come campo dello stato), poi 4–9.
+- Step 3 (riassunto come campo dello stato) su `feat/riassunto`, unito in `dev`.
+- Prossimo: step 4 (resource `utente://preferenze`), poi 5–9.
 
 ## Prompt da incollare (ripartenza)
 ```
