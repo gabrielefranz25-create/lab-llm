@@ -276,6 +276,9 @@ def test_main_intestazione_con_strumenti_mcp(monkeypatch):
             visto["servers"] = servers
             self.strumenti = [finto]
 
+        def elenca_prompt(self, server):
+            return []
+
         def __enter__(self):
             return self
 
@@ -284,12 +287,14 @@ def test_main_intestazione_con_strumenti_mcp(monkeypatch):
             return False
 
     monkeypatch.setattr(agente.main, "avvia_sessione",
-                        lambda grafo, intestazione, server, recursion_limit: visto.update(
-                            testata=intestazione, limite=recursion_limit))
+                        lambda grafo, intestazione, server, recursion_limit, comandi: visto.update(
+                            testata=intestazione, limite=recursion_limit, comandi=comandi))
     assert _avvia_main_con_mcp(monkeypatch, Finta) == 0
     assert "Strumenti: ora_corrente, meteo_attuale" in visto["testata"]
     assert visto["limite"] == 16  # 2*3 passi + 2*2 revisioni + 6
     assert visto["servers"][0].nome == "meteo" and visto["chiusa"]
+    # Il server utente (prompt MCP) entra nella connessione, per ultimo; i suoi prompt vanno alla chat.
+    assert visto["servers"][-1].nome == "utente" and visto["comandi"] is not None
 
 
 def test_rispondi_azzera_passi_e_revisioni():
@@ -336,6 +341,9 @@ def test_main_applica_le_preferenze_lette_dalla_resource(monkeypatch):
             visto["servers"] = servers
             self.strumenti = []
 
+        def elenca_prompt(self, server):
+            return []
+
         def __enter__(self):
             return self
 
@@ -348,7 +356,8 @@ def test_main_applica_le_preferenze_lette_dalla_resource(monkeypatch):
 
     monkeypatch.setattr(agente.main, "costruisci_grafo", grafo_finto)
     monkeypatch.setattr(agente.main, "avvia_sessione",
-                        lambda grafo, intestazione, server, recursion_limit: visto.update(testata=intestazione))
+                        lambda grafo, intestazione, server, recursion_limit, comandi: visto.update(
+                            testata=intestazione))
     preferenze = Preferenze("inglese", "America/New_York", "dettagliato")
     assert _avvia_main_con_mcp(monkeypatch, Finta, preferenze) == 0
     assert visto["fuso_predefinito"] == "America/New_York"

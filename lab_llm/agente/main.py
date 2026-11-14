@@ -7,6 +7,7 @@ from dataclasses import replace
 from langchain_core.tools import BaseTool
 
 from agente.client import avvia_sessione
+from agente.comandi import ComandiPrompt
 from agente.config import Config, ErroreConfigurazione, carica_config
 from agente.graph import costruisci_grafo, limite_ricorsione
 from agente.llm import (ErroreModello, crea_modello, crea_revisore, crea_riassuntore, crea_router,
@@ -110,7 +111,9 @@ def main() -> int:
         # Il suo fuso diventa il fuso predefinito della sessione (orologio, scadenze, prompt).
         preferenze = leggi_preferenze(server_utente(config), config.mcp_timeout, predefinite(config))
         config = replace(config, fuso_orario_predefinito=preferenze.fuso_orario)
-        with ConnessioneMCP(server_da_config(config), config.mcp_timeout) as connessione:
+        # Il server utente entra anche qui per i prompt MCP (/prompts, /prompt): non ha tool.
+        with ConnessioneMCP(server_da_config(config) + [server_utente(config)],
+                            config.mcp_timeout) as connessione:
             strumenti = unisci_strumenti(strumenti_orologio(config), connessione.strumenti)
             grafo = costruisci_grafo(
                 crea_modello(config, strumenti), strumenti,
@@ -133,6 +136,7 @@ def main() -> int:
                               f"Strumenti: {', '.join(s.name for s in strumenti)}"),
                 server=config.lm_base_url,
                 recursion_limit=limite_ricorsione(config.max_passi_strumento, config.max_revisioni),
+                comandi=ComandiPrompt(connessione),
             )
     except KeyboardInterrupt:  # Ctrl+C durante l'avvio dei server MCP
         print("Interrotto.", file=sys.stderr)

@@ -16,7 +16,9 @@ TRASPORTI_MCP = ("stdio", "http")
 # Ambito dell'agente usato dal router se AMBITO_AGENTE è assente o vuota: l'orologio e i saluti ci
 # sono sempre, poi una frase per ogni server MCP attivo.
 AMBITO_INIZIO = "data e ora attuali in qualsiasi fuso orario"
-AMBITO_FINE = "saluti e domande sull'assistente stesso"
+# Spiegazioni e riassunti: le richieste dei prompt MCP spiega e riassumi_conversazione (lezione 6, step 5).
+AMBITO_FINE = ("spiegazioni di concetti di informatica e di intelligenza artificiale, riassunti della "
+               "conversazione, saluti e domande sull'assistente stesso")
 AMBITO_PER_SERVER = {
     "meteo": "meteo attuale e previsioni",
     "note": "note personali dell'utente (aggiungere, elencare, eliminare)",
