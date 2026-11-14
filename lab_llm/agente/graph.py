@@ -72,6 +72,8 @@ PROMPT_REVISORE = (
     "NON controllare se numeri, orari, dati meteo o risultati dei calcoli sono giusti: arrivano dagli "
     "strumenti e vanno considerati corretti anche se ti sembrano sbagliati. Una risposta che spiega di "
     "non poter fare una parte, o che riporta un errore dello strumento, tratta comunque quella parte.\n"
+    "Esempio: domanda «Quanto fa 7 per 8?», risposta «7 per 8 fa 56.» → coerente=true (in italiano "
+    "«per» indica la moltiplicazione, ma anche con un numero diverso la parte sarebbe trattata).\n"
     "Scrivi prima il motivo breve, in italiano (quali parti sono trattate e quali mancano), poi "
     "coerente=true oppure coerente=false."
 )
