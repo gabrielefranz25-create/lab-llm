@@ -352,7 +352,7 @@ def test_main_applica_le_preferenze_lette_dalla_resource(monkeypatch):
     preferenze = Preferenze("inglese", "America/New_York", "dettagliato")
     assert _avvia_main_con_mcp(monkeypatch, Finta, preferenze) == 0
     assert visto["fuso_predefinito"] == "America/New_York"
-    assert visto["preferenze"].startswith("Preferenze dell'utente") and "inglese" in visto["preferenze"]
+    assert visto["preferenze"].startswith("Rispondi sempre in inglese")
     scadenze = next(s for s in visto["servers"] if s.nome == "scadenze")
     assert scadenze.env["FUSO_ORARIO"] == "America/New_York"
     assert "Fuso predefinito: America/New_York" in visto["testata"]

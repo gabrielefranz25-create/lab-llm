@@ -45,7 +45,7 @@ def test_json_non_valido_solleva_errore():
 
 def test_istruzioni_per_il_prompt():
     testo = istruzioni(Preferenze("inglese", "America/New_York", "dettagliato"))
-    assert testo == ("Preferenze dell'utente: rispondi sempre in inglese, in modo dettagliato, "
+    assert testo == ("Rispondi sempre in inglese, in modo dettagliato, "
                      "con spiegazioni ed esempi.")
     # Il fuso non sta in questa riga: arriva al prompt come fuso predefinito (vedi la docstring).
     assert "America/New_York" not in testo and "resource" not in testo

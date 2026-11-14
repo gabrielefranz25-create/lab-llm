@@ -70,11 +70,11 @@ def interpreta(testo: str, base: Preferenze) -> Preferenze:
 def istruzioni(preferenze: Preferenze) -> str:
     """Riga da mettere in cima al prompt di sistema; il fuso arriva al prompt come fuso predefinito.
 
-    Riga volutamente asciutta. Prova reale del 2026-11-14 con «Che ore sono?», 3 tentativi per
-    variante: con l'URI della resource, «(stile …)» e il fuso in questa riga gemma-4-e2b inventava
-    l'ora senza chiamare `ora_corrente` (0 su 3); così la chiama (3 su 3).
+    Riga volutamente asciutta. Sonde reali del 2026-11-14, 3 tentativi per variante: con l'URI della
+    resource, «(stile …)» e il fuso gemma-4-e2b inventava l'ora (0 chiamate a `ora_corrente` su 3); con
+    l'etichetta «Preferenze dell'utente:» non chiamava `calcola` per «15 per 12» (0 su 3); così 3 su 3.
     """
-    return f"Preferenze dell'utente: rispondi sempre in {preferenze.lingua}, {STILI[preferenze.stile]}."
+    return f"Rispondi sempre in {preferenze.lingua}, {STILI[preferenze.stile]}."
 
 
 def leggi_preferenze(server: ServerMCP | None, timeout: float, base: Preferenze) -> Preferenze:

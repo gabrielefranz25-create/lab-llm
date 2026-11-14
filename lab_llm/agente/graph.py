@@ -19,14 +19,16 @@ from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
-# Lingua e stile: dalle preferenze dell'utente (resource utente://preferenze, lezione 6 step 4), messe in
-# cima al prompt dal chiamante; senza preferenze si usano queste.
+# Lingua e stile: dalle preferenze dell'utente (resource utente://preferenze, lezione 6 step 4), nella
+# prima riga del prompt, subito dopo «Sei l'assistente del laboratorio.»; senza preferenze si usano queste.
+# Sonde reali del 2026-11-14: con le preferenze prima di quella frase, o con l'etichetta «Preferenze
+# dell'utente:», «Quanto fa 15 per 12?» non chiamava più `calcola` (0 su 3; 3 su 3 così).
 ISTRUZIONI_PREDEFINITE = "Rispondi in italiano, in modo breve e chiaro."
 
 PROMPT_SISTEMA = (
-    "Sei l'assistente del laboratorio.\n"
+    "Sei l'assistente del laboratorio. {preferenze}\n"
     "Per qualsiasi domanda su data, ora o giorno attuali usa SEMPRE lo strumento `ora_corrente`: "
-    "non inventare l'ora. Se l'utente non indica un luogo usa il fuso predefinito {fuso}. "
+    "non inventare l'ora. Se l'utente non indica un luogo usa il fuso predefinito {fuso}{nota_fuso}. "
     "Per altri luoghi passa il nome IANA del fuso (es. \"Asia/Tokyo\").\n"
     "Nella risposta indica sempre a quale fuso orario si riferisce l'ora.\n"
     "Per il meteo di adesso usa lo strumento `meteo_attuale` e per le previsioni "
@@ -237,8 +239,11 @@ def costruisci_grafo(modello: Runnable, strumenti: list[BaseTool], *, max_passi:
     ogni domanda passa all'agente; senza revisore ogni risposta è approvata. Router e revisore
     restituiscono un DecisioneRouter e un DecisioneRevisore.
     """
-    # Le preferenze dell'utente (o le istruzioni predefinite) stanno in cima al prompt di sistema.
-    prompt = "\n".join([preferenze, PROMPT_SISTEMA.format(fuso=fuso_predefinito),
+    # Le preferenze dell'utente (o le istruzioni predefinite) stanno nella prima riga del prompt di sistema.
+    # «(ora italiana)» solo dove è vera; tolta del tutto, gemma-4-e2b chiamava meno `calcola` (sonda reale).
+    nota_fuso = " (ora italiana)" if fuso_predefinito == "Europe/Rome" else ""
+    prompt = "\n".join([PROMPT_SISTEMA.format(fuso=fuso_predefinito, nota_fuso=nota_fuso,
+                                              preferenze=preferenze),
                         *(testo for nome, testo in ISTRUZIONI_PER_STRUMENTO.items()
                           if any(s.name == nome for s in strumenti))])
     prompt_router = PROMPT_ROUTER.format(ambito=ambito)

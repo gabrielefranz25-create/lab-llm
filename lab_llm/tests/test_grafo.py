@@ -243,13 +243,20 @@ def _prompt_con_preferenze(**argomenti) -> str:
 
 
 def test_preferenze_in_cima_al_prompt_di_sistema():
-    preferenze = "Preferenze dell'utente (resource utente://preferenze): rispondi sempre in inglese."
+    preferenze = "Rispondi sempre in inglese, in modo breve e chiaro."
     prompt = _prompt_con_preferenze(preferenze=preferenze)
-    assert prompt.startswith(preferenze + "\n")
-    assert "America/New_York" in prompt and "ora italiana" not in prompt
+    assert prompt.startswith("Sei l'assistente del laboratorio. " + preferenze + "\n")
+    assert "America/New_York" in prompt and "ora italiana" not in prompt  # vera solo per Europe/Rome
     assert "Rispondi in italiano" not in prompt
 
 
 def test_senza_preferenze_istruzioni_predefinite_in_cima():
-    assert _prompt_con_preferenze().startswith(ISTRUZIONI_PREDEFINITE + "\n")
+    assert _prompt_con_preferenze().startswith(
+        "Sei l'assistente del laboratorio. " + ISTRUZIONI_PREDEFINITE + "\n")
     assert "italiano" in ISTRUZIONI_PREDEFINITE
+
+
+def test_ora_italiana_solo_con_il_fuso_di_roma():
+    # Sonda reale del 2026-11-14: senza «(ora italiana)» gemma-4-e2b chiamava meno `calcola`.
+    assert "Europe/Rome (ora italiana)." in _prompt_inviato([crea_ora_corrente(orologio=lambda: INVERNO)])
+    assert "(ora italiana)" not in _prompt_con_preferenze()
