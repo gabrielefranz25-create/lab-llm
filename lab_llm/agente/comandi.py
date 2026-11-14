@@ -1,0 +1,97 @@
+"""Comandi della CLI per i prompt MCP: /prompts elenca, /prompt nome arg=valore richiama.
+
+Un prompt lo sceglie l'utente. MCP non prevede comandi standard: questi li definisce la nostra CLI.
+Gli argomenti vengono controllati qui, nell'host, rispetto a `prompts/list`: una richiesta non valida
+non arriva né al server né al modello. I messaggi ottenuti con `prompts/get` vanno poi al grafo come
+una domanda qualsiasi (router, strumenti, revisore).
+"""
+
+import json
+import logging
+import shlex
+
+from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
+
+from agente.mcp_ponte import ErroreMCP
+
+logger = logging.getLogger(__name__)
+
+ESEMPIO = '/prompt spiega argomento="Model Context Protocol" livello=base'
+USO = f"Uso: /prompt nome argomento=valore ... (per esempio {ESEMPIO})"
+
+
+class ErroreComando(Exception):
+    """Comando non valido o non eseguibile: il messaggio è per l'utente."""
+
+
+class ComandiPrompt:
+    """Catalogo dei prompt del server (letto una volta) e richiamo dei prompt dalla CLI."""
+
+    def __init__(self, connessione, server: str = "utente"):
+        self.connessione, self.server = connessione, server
+        try:
+            self.catalogo = {p.name: p for p in connessione.elenca_prompt(server)}
+        except ErroreMCP as errore:
+            logger.warning("prompt non disponibili: %s", errore)
+            self.catalogo = None
+            return
+        logger.info("prompt: catalogo del server %s [%s]", server, ", ".join(self.catalogo))
+
+    @property
+    def disponibili(self) -> bool:
+        return self.catalogo is not None
+
+    def elenco(self) -> str:
+        """Testo di /prompts: nome, descrizione e argomenti di ogni prompt."""
+        if not self.disponibili:
+            return f"Prompt non disponibili: server {self.server} non raggiungibile."
+        righe = [f"Prompt del server {self.server}:"]
+        for prompt in self.catalogo.values():
+            righe.append(f"- {prompt.name}: {prompt.description or ''}".rstrip())
+            for argomento in prompt.arguments or []:
+                tipo = "obbligatorio" if argomento.required else "facoltativo"
+                righe.append(f"    {argomento.name} ({tipo}): {argomento.description or ''}".rstrip())
+        righe.append(USO)
+        return "\n".join(righe)
+
+    def richiama(self, riga: str) -> list[AnyMessage]:
+        """Da `/prompt nome a=b ...` ai messaggi compilati dal server. Solleva ErroreComando."""
+        if not self.disponibili:
+            raise ErroreComando(f"Prompt non disponibili: server {self.server} non raggiungibile.")
+        nome, argomenti = self._interpreta(riga)
+        try:
+            messaggi = self.connessione.ottieni_prompt(self.server, nome, argomenti)
+        except ErroreMCP as errore:
+            logger.warning("prompt %s non riuscito: %s", nome, errore)
+            raise ErroreComando(f"Il server non ha compilato il prompt {nome}: {errore}") from errore
+        logger.info("prompt: richiamato %s argomenti=%s dal server %s: %d messaggi", nome,
+                    json.dumps(argomenti, ensure_ascii=False), self.server, len(messaggi))
+        for i, (ruolo, testo) in enumerate(messaggi, start=1):
+            logger.info("prompt: messaggio %d (%s): %s", i, ruolo, testo.replace("\n", " "))
+        return [AIMessage(testo) if ruolo == "assistant" else HumanMessage(testo) for ruolo, testo in messaggi]
+
+    def _interpreta(self, riga: str) -> tuple[str, dict[str, str]]:
+        """Nome e argomenti, controllati rispetto al catalogo (prompts/list)."""
+        try:
+            parti = shlex.split(riga)
+        except ValueError:
+            raise ErroreComando(f"Virgolette non chiuse. {USO}") from None
+        if len(parti) < 2:
+            raise ErroreComando(USO)
+        nome, *coppie = parti[1:]
+        prompt = self.catalogo.get(nome)
+        if prompt is None:
+            raise ErroreComando(f"Prompt sconosciuto: {nome}. Disponibili: {', '.join(self.catalogo)}.")
+        ammessi = {a.name: a for a in prompt.arguments or []}
+        argomenti: dict[str, str] = {}
+        for coppia in coppie:
+            chiave, uguale, valore = coppia.partition("=")
+            if not uguale or not chiave:
+                raise ErroreComando(f"'{coppia}': atteso nome=valore. {USO}")
+            if chiave not in ammessi:
+                raise ErroreComando(f"Argomento sconosciuto: {chiave}. Ammessi: {', '.join(ammessi)}.")
+            argomenti[chiave] = valore
+        mancanti = [n for n, a in ammessi.items() if a.required and n not in argomenti]
+        if mancanti:
+            raise ErroreComando(f"Argomento obbligatorio mancante: {', '.join(mancanti)}.")
+        return nome, argomenti
