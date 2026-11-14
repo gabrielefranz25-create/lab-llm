@@ -45,14 +45,7 @@ class ComandiPrompt:
         """Testo di /prompts: nome, descrizione e argomenti di ogni prompt."""
         if not self.disponibili:
             return f"Prompt non disponibili: server {self.server} non raggiungibile."
-        righe = [f"Prompt del server {self.server}:"]
-        for prompt in self.catalogo.values():
-            righe.append(f"- {prompt.name}: {prompt.description or ''}".rstrip())
-            for argomento in prompt.arguments or []:
-                tipo = "obbligatorio" if argomento.required else "facoltativo"
-                righe.append(f"    {argomento.name} ({tipo}): {argomento.description or ''}".rstrip())
-        righe.append(USO)
-        return "\n".join(righe)
+        return formatta_catalogo(self.catalogo_json(), self.server)
 
     def catalogo_json(self) -> list[dict]:
         """Catalogo come dati semplici (per GET /prompts del servizio HTTP)."""
@@ -94,6 +87,18 @@ class ComandiPrompt:
         mancanti = [n for n, a in ammessi.items() if a.required and n not in argomenti]
         if mancanti:
             raise ErroreComando(f"Argomento obbligatorio mancante: {', '.join(mancanti)}.")
+
+
+def formatta_catalogo(catalogo: list[dict], server: str = "utente") -> str:
+    """Testo di /prompts dal catalogo in forma di dati (catalogo_json o GET /prompts del servizio)."""
+    righe = [f"Prompt del server {server}:"]
+    for prompt in catalogo:
+        righe.append(f"- {prompt['nome']}: {prompt['descrizione']}".rstrip())
+        for argomento in prompt["argomenti"]:
+            tipo = "obbligatorio" if argomento["obbligatorio"] else "facoltativo"
+            righe.append(f"    {argomento['nome']} ({tipo}): {argomento['descrizione']}".rstrip())
+    righe.append(USO)
+    return "\n".join(righe)
 
 
 def interpreta_riga(riga: str) -> tuple[str, dict[str, str]]:
