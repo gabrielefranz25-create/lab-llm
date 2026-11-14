@@ -366,3 +366,52 @@ def test_server_utente_stdio_e_http():
     assert server.env["PREFERENZE_FILE"] == "dati/pref.json" and server.env["MCP_TRASPORTO"] == "stdio"
     http = server_utente(_config(TRASPORTO_MCP="http", MCP_HTTP_HOST="server-mcp"))
     assert http.url == "http://server-mcp:8108/mcp"
+
+
+class ComandiFinti:
+    """Come ComandiPrompt: /prompt valido → un HumanMessage; con «errore» → ErroreComando."""
+
+    disponibili = True
+
+    def elenco(self):
+        return "Prompt del server utente:\n- spiega: Spiega un argomento."
+
+    def richiama(self, riga):
+        from agente.comandi import ErroreComando
+        if "errore" in riga:
+            raise ErroreComando("Argomento obbligatorio mancante: argomento.")
+        return [HumanMessage("Spiegami «MCP» a livello base")]
+
+
+def _sessione_con_comandi(grafo, ingressi, comandi=None):
+    righe: list[str] = []
+    coda = iter(ingressi + ["esci"])
+    avvia_sessione(grafo, intestazione="Modello: m", server=SERVER, recursion_limit=16,
+                   leggi=lambda _p: next(coda), scrivi=righe.append, comandi=comandi)
+    return "\n".join(righe)
+
+
+def test_comando_prompts_elenca_senza_chiamare_il_grafo():
+    grafo = GrafoFinto(None)
+    uscita = _sessione_con_comandi(grafo, ["/prompts"], ComandiFinti())
+    assert "spiega: Spiega un argomento." in uscita and grafo.ricevuti == []
+
+
+def test_comando_prompt_manda_i_messaggi_del_server_al_grafo():
+    grafo = GrafoFinto(None)
+    uscita = _sessione_con_comandi(grafo, ["/prompt spiega argomento=MCP"], ComandiFinti())
+    assert [m.content for m in grafo.ricevuti[0]] == ["Spiegami «MCP» a livello base"]
+    assert "Assistente> ok" in uscita
+
+
+def test_comando_prompt_non_valido_non_chiama_il_grafo():
+    grafo = GrafoFinto(None)
+    uscita = _sessione_con_comandi(grafo, ["/prompt spiega errore"], ComandiFinti())
+    assert grafo.ricevuti == [] and "[errore] Argomento obbligatorio mancante" in uscita
+
+
+def test_comando_sconosciuto_o_senza_prompt_non_va_al_modello():
+    grafo = GrafoFinto(None)
+    uscita = _sessione_con_comandi(grafo, ["/aiuto", "/prompts"])
+    assert grafo.ricevuti == []
+    assert "Comando sconosciuto: /aiuto" in uscita and "Prompt non disponibili" in uscita

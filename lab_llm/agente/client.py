@@ -11,6 +11,8 @@ import openai
 from langchain_core.messages import AnyMessage, HumanMessage
 from langgraph.errors import GraphRecursionError
 
+from agente.comandi import ErroreComando
+
 logger = logging.getLogger(__name__)
 
 COMANDI_USCITA = {"esci", "exit", "quit"}
@@ -19,11 +21,14 @@ CHIUSURA = "Sessione terminata. La cronologia non è stata salvata."
 
 
 def rispondi(grafo, cronologia: list[AnyMessage], testo: str, recursion_limit: int,
-             riassunto: str = "") -> tuple[list[AnyMessage], str, str]:
-    """Un turno: domanda in coda alla cronologia, grafo; nuova cronologia, nuovo riassunto e risposta."""
+             riassunto: str = "", nuovi: list[AnyMessage] | None = None) -> tuple[list[AnyMessage], str, str]:
+    """Un turno: domanda in coda alla cronologia, grafo; nuova cronologia, nuovo riassunto e risposta.
+
+    `nuovi`, se c'è, sostituisce la domanda: sono i messaggi compilati da un prompt MCP (/prompt).
+    """
     # print(f"[passo] client: invio la domanda con {len(cronologia)} messaggi di cronologia")
     risultato = grafo.invoke(
-        {"messages": cronologia + [HumanMessage(testo)], "passi_strumento": 0, "revisioni": 0,
+        {"messages": cronologia + (nuovi or [HumanMessage(testo)]), "passi_strumento": 0, "revisioni": 0,
          "riassunto": riassunto},
         config={"recursion_limit": recursion_limit},
     )
@@ -37,11 +42,16 @@ def rispondi(grafo, cronologia: list[AnyMessage], testo: str, recursion_limit: i
 
 def avvia_sessione(grafo, *, intestazione: str, server: str, recursion_limit: int,
                    leggi: Callable[[str], str] = input,
-                   scrivi: Callable[[str], None] = print) -> None:
-    """Ciclo della chat fino a esci/exit/quit, Ctrl+C o EOF."""
+                   scrivi: Callable[[str], None] = print, comandi=None) -> None:
+    """Ciclo della chat fino a esci/exit/quit, Ctrl+C o EOF.
+
+    `comandi` (un ComandiPrompt) gestisce /prompts e /prompt; le righe che iniziano con «/» non vanno
+    mai al modello come testo.
+    """
     scrivi("Assistente del laboratorio")
     scrivi(intestazione)
-    scrivi("Scrivi una domanda e premi Invio. Per uscire: esci (oppure Ctrl+C).")
+    scrivi("Scrivi una domanda e premi Invio. Comandi: /prompts, /prompt nome arg=valore. "
+           "Per uscire: esci (oppure Ctrl+C).")
     cronologia: list[AnyMessage] = []
     riassunto = ""  # riassunto dei messaggi vecchi, aggiornato dal nodo compatta
     while True:
@@ -54,8 +64,26 @@ def avvia_sessione(grafo, *, intestazione: str, server: str, recursion_limit: in
             continue
         if testo.lower() in COMANDI_USCITA:
             break
+        nuovi = None
+        if testo.startswith("/"):
+            comando = testo.split()[0]
+            if comando not in ("/prompts", "/prompt"):
+                scrivi(f"Assistente> [errore] Comando sconosciuto: {comando}. Comandi: /prompts, /prompt.")
+                continue
+            if comandi is None or not comandi.disponibili:
+                scrivi("Assistente> [errore] Prompt non disponibili: server utente non raggiungibile.")
+                continue
+            if comando == "/prompts":
+                scrivi(comandi.elenco())
+                continue
+            try:
+                nuovi = comandi.richiama(testo)
+            except ErroreComando as errore:  # richiesta bloccata: né server né modello
+                scrivi(f"Assistente> [errore] {errore}")
+                continue
         try:
-            cronologia, riassunto, risposta = rispondi(grafo, cronologia, testo, recursion_limit, riassunto)
+            cronologia, riassunto, risposta = rispondi(grafo, cronologia, testo, recursion_limit, riassunto,
+                                                       nuovi)
         except KeyboardInterrupt:  # Ctrl+C mentre si aspetta il modello: si esce senza traceback
             break
         except openai.APIError as errore:
