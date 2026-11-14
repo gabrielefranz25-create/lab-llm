@@ -60,6 +60,7 @@ class Config:
     trasporto_mcp: str = "stdio"
     mcp_http_host: str = "127.0.0.1"
     max_revisioni: int = 2
+    preferenze_file: str = "server_mcp/risorse/preferenze.json"
 
 
 def _leggi(ambiente: Mapping[str, str], nome: str, default: str | None = None) -> str:
@@ -175,4 +176,5 @@ def carica_config(ambiente: Mapping[str, str] | None = None) -> Config:
         trasporto_mcp=_scelta(ambiente, "TRASPORTO_MCP", TRASPORTI_MCP),
         mcp_http_host=_leggi(ambiente, "MCP_HTTP_HOST", "127.0.0.1"),
         max_revisioni=_intero(ambiente, "MAX_REVISIONI", 2, minimo=0),
+        preferenze_file=_leggi(ambiente, "PREFERENZE_FILE", "server_mcp/risorse/preferenze.json"),
     )
