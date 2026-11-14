@@ -190,6 +190,18 @@ class ConnessioneMCP:
         contenuti = self._esegui(nome_server, lambda client: client.read_resource(uri))
         return "\n".join(c.text for c in contenuti if hasattr(c, "text"))
 
+    # --- primitive dell'host: prompt (li sceglie l'utente) -------------------------------------
+
+    def elenca_prompt(self, nome_server: str) -> list:
+        """`prompts/list`: nome, descrizione e argomenti (con `required`) di ogni prompt del server."""
+        return self._esegui(nome_server, lambda client: client.list_prompts())
+
+    def ottieni_prompt(self, nome_server: str, nome: str, argomenti: dict[str, str]) -> list[tuple[str, str]]:
+        """`prompts/get`: i messaggi compilati dal server, come coppie (ruolo, testo)."""
+        # print(f"[passo] MCP {nome_server}: prompt {nome}({argomenti})")
+        risultato = self._esegui(nome_server, lambda client: client.get_prompt(nome, argomenti))
+        return [(m.role, getattr(m.content, "text", "")) for m in risultato.messages]
+
     # --- tool sincroni -----------------------------------------------------------------------
 
     def _crea_strumento(self, server: ServerMCP, client: Client, voce) -> StructuredTool:
