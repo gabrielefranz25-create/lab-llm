@@ -8,8 +8,9 @@ import pytest
 from langchain_openai import ChatOpenAI
 
 from agente.config import carica_config
-from agente.graph import DecisioneRouter
-from agente.llm import ErroreModello, crea_modello, crea_riassuntore, crea_router, verifica_modello
+from agente.graph import DecisioneRevisore, DecisioneRouter
+from agente.llm import (ErroreModello, crea_modello, crea_revisore, crea_riassuntore, crea_router,
+                        verifica_modello)
 from agente.strumenti import crea_ora_corrente
 
 URL = "http://localhost:1234/v1"
@@ -77,4 +78,11 @@ def test_crea_router_output_strutturato_senza_strumenti():
     assert chiamata.kwargs["response_format"] is DecisioneRouter
     assert "tools" not in chiamata.kwargs
     assert chiamata.bound.model_name == "m"
+    assert chiamata.bound.temperature == 0
+
+
+def test_crea_revisore_output_strutturato_senza_strumenti():
+    chiamata = crea_revisore(_config()).first
+    assert chiamata.kwargs["response_format"] is DecisioneRevisore
+    assert "tools" not in chiamata.kwargs
     assert chiamata.bound.temperature == 0

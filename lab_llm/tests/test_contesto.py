@@ -1,7 +1,6 @@
 """Test delle funzioni pure del grafo: finestra di contesto e instradamento."""
 
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
-from langgraph.graph import END
 
 from agente.graph import finestra_contesto, instrada_dopo_llm, limite_ricorsione
 
@@ -45,9 +44,9 @@ def test_finestra_ultimo_turno_piu_lungo_di_n():
     assert finestra_contesto(messaggi, 2) == messaggi
 
 
-def test_instrada_fine_senza_tool_call():
+def test_instrada_al_revisore_senza_tool_call():
     stato = {"messages": [HumanMessage("ciao"), AIMessage("salve")], "passi_strumento": 0}
-    assert instrada_dopo_llm(stato, 3) == END
+    assert instrada_dopo_llm(stato, 3) == "revisore"
 
 
 def test_instrada_strumenti_sotto_limite():
@@ -61,4 +60,4 @@ def test_instrada_limite_raggiunto():
 
 
 def test_limite_ricorsione():
-    assert limite_ricorsione(3) == 11
+    assert limite_ricorsione(3) == 16  # 2*3 passi + 2*2 revisioni + 6

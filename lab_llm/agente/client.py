@@ -23,7 +23,7 @@ def rispondi(grafo, cronologia: list[AnyMessage], testo: str,
     """Un turno: domanda in coda alla cronologia, grafo, nuova cronologia e testo della risposta."""
     # print(f"[passo] client: invio la domanda con {len(cronologia)} messaggi di cronologia")
     risultato = grafo.invoke(
-        {"messages": cronologia + [HumanMessage(testo)], "passi_strumento": 0},
+        {"messages": cronologia + [HumanMessage(testo)], "passi_strumento": 0, "revisioni": 0},
         config={"recursion_limit": recursion_limit},
     )
     messaggi = risultato["messages"]

@@ -1,4 +1,4 @@
-"""Grafo LangGraph dell'assistente: stato, compattazione, router, finestra di contesto, instradamento, nodi.
+"""Grafo LangGraph dell'assistente: stato, compattazione, router, revisore, finestra di contesto, nodi.
 
 I print didattici "[passo]" sono commentati: togliere il commento per seguire il flusso.
 """
@@ -64,6 +64,27 @@ PROMPT_ROUTER = (
 
 MESSAGGIO_RIFIUTO = "Mi dispiace, posso aiutarti solo con: {ambito}."
 
+PROMPT_REVISORE = (
+    "Sei il revisore dell'assistente del laboratorio. Non rispondi all'utente: controlli solo se la "
+    "risposta proposta tratta tutto ciò che la domanda chiede.\n"
+    "Procedi così: elenca le parti della domanda (una domanda può chiedere più cose); per ognuna guarda "
+    "se la risposta ne parla. La risposta è coerente se parla di TUTTE le parti e non devia dal tema.\n"
+    "NON controllare se numeri, orari, dati meteo o risultati dei calcoli sono giusti: arrivano dagli "
+    "strumenti e vanno considerati corretti anche se ti sembrano sbagliati. Una risposta che spiega di "
+    "non poter fare una parte, o che riporta un errore dello strumento, tratta comunque quella parte.\n"
+    "Scrivi prima il motivo breve, in italiano (quali parti sono trattate e quali mancano), poi "
+    "coerente=true oppure coerente=false."
+)
+
+# Nome del HumanMessage con cui il revisore rimanda all'agente il motivo (un HumanMessage e non un
+# SystemMessage: alcuni modelli accettano un solo messaggio di sistema, in testa).
+NOME_REVISORE = "revisore"
+INTESTAZIONE_REVISORE = "Nota del revisore: "
+NOTA_REVISORE = (
+    INTESTAZIONE_REVISORE + "la risposta precedente non è completa o coerente con la domanda: {motivo}. "
+    "Rispondi di nuovo alla domanda dell'utente, completa."
+)
+
 # Messaggi della cronologia (domanda compresa) che il router legge per decidere.
 MESSAGGI_ROUTER = 4
 
@@ -81,6 +102,13 @@ class DecisioneRouter(BaseModel):
     motivo: str = Field(description="motivo breve della scelta, in italiano")
 
 
+class DecisioneRevisore(BaseModel):
+    """Output strutturato del revisore. Il motivo viene prima: il modello ragiona, poi decide."""
+    motivo: str = Field(description="parti della domanda trattate e mancanti, in breve, in italiano")
+    coerente: bool = Field(description="true se la risposta tratta tutte le parti della domanda senza "
+                                       "deviare dal tema, altrimenti false")
+
+
 class AgentState(TypedDict):
     # Cronologia (Human/AI/Tool): add_messages accoda i messaggi nuovi restituiti dai nodi.
     messages: Annotated[list[AnyMessage], add_messages]
@@ -88,6 +116,8 @@ class AgentState(TypedDict):
     passi_strumento: int
     # Decisione del router per il turno corrente: "conversazione" o "fuori_ambito".
     categoria: str
+    # Revisioni chieste dal revisore nel turno corrente (azzerate dal client a ogni domanda).
+    revisioni: int
 
 
 def finestra_contesto(messaggi: list[AnyMessage], n: int) -> list[AnyMessage]:
@@ -112,6 +142,18 @@ def _e_riassunto(messaggio: AnyMessage) -> bool:
     return isinstance(messaggio, SystemMessage) and messaggio.name == NOME_RIASSUNTO
 
 
+def _e_nota_revisore(messaggio: AnyMessage) -> bool:
+    return isinstance(messaggio, HumanMessage) and messaggio.name == NOME_REVISORE
+
+
+def domanda_del_turno(messaggi: list[AnyMessage]) -> str:
+    """Testo dell'ultimo HumanMessage dell'utente (le note del revisore non contano)."""
+    for m in reversed(messaggi):
+        if isinstance(m, HumanMessage) and not _e_nota_revisore(m):
+            return m.content
+    return ""
+
+
 def dividi_cronologia(messaggi: list[AnyMessage], da_tenere: int) -> tuple[list[AnyMessage], list[AnyMessage]]:
     """(vecchi, recenti): recenti sono gli ultimi `da_tenere` messaggi, a partire da un HumanMessage.
 
@@ -129,6 +171,8 @@ def trascrivi(messaggi: list[AnyMessage]) -> str:
     for m in messaggi:
         if _e_riassunto(m):
             righe.append(f"Riassunto precedente: {m.content.removeprefix(INTESTAZIONE_RIASSUNTO)}")
+        elif _e_nota_revisore(m):
+            righe.append(f"Revisore: {m.content.removeprefix(INTESTAZIONE_REVISORE)}")
         elif isinstance(m, HumanMessage):
             righe.append(f"Utente: {m.content}")
         elif isinstance(m, ToolMessage):
@@ -143,11 +187,11 @@ def instrada_dopo_router(stato: AgentState) -> Literal["llm", "rifiuto"]:
     return "rifiuto" if stato["categoria"] == "fuori_ambito" else "llm"
 
 
-def instrada_dopo_llm(stato: AgentState, max_passi: int) -> Literal["strumenti", "limite", "__end__"]:
-    """Dopo il nodo llm: fine se non ci sono tool_call, altrimenti strumenti o limite."""
+def instrada_dopo_llm(stato: AgentState, max_passi: int) -> Literal["strumenti", "limite", "revisore"]:
+    """Dopo il nodo llm: revisore se non ci sono tool_call, altrimenti strumenti o limite."""
     if not _richieste(stato["messages"][-1]):
-        # print("[passo] instradamento: nessuna tool_call -> fine del turno")
-        return END
+        # print("[passo] instradamento: nessuna tool_call -> revisore")
+        return "revisore"
     if stato["passi_strumento"] < max_passi:
         # print(f"[passo] instradamento: tool_call, passo {stato['passi_strumento'] + 1} di {max_passi} -> strumenti")
         return "strumenti"
@@ -165,21 +209,28 @@ def _richieste(messaggio: AnyMessage) -> list[dict]:
             + (getattr(messaggio, "invalid_tool_calls", None) or []))
 
 
-def limite_ricorsione(max_passi: int) -> int:
-    """Rete di sicurezza per invoke(): con il nodo limite non dovrebbe mai scattare."""
-    return 2 * max_passi + 5
+def instrada_dopo_revisore(stato: AgentState) -> Literal["llm", "__end__"]:
+    """Dopo il revisore: di nuovo all'agente se ha aggiunto una nota, altrimenti fine del turno."""
+    return "llm" if _e_nota_revisore(stato["messages"][-1]) else END
+
+
+def limite_ricorsione(max_passi: int, max_revisioni: int = 2) -> int:
+    """Rete di sicurezza per invoke(): con i nodi limite e revisore non dovrebbe mai scattare."""
+    return 2 * max_passi + 2 * max_revisioni + 6
 
 
 def costruisci_grafo(modello: Runnable, strumenti: list[BaseTool], *, max_passi: int,
                      max_messaggi_contesto: int, fuso_predefinito: str,
                      riassuntore: Runnable | None = None,
                      messaggi_da_tenere: int = 6, router: Runnable | None = None,
-                     ambito: str = "") -> CompiledStateGraph:
-    """Grafo compatta -> router -> (llm -> strumenti -> llm | rifiuto), con il nodo limite.
+                     ambito: str = "", revisore: Runnable | None = None,
+                     max_revisioni: int = 2) -> CompiledStateGraph:
+    """Grafo compatta -> router -> (llm -> strumenti -> llm -> revisore | rifiuto), con il nodo limite.
 
-    Il modello ha già gli strumenti collegati; riassuntore e router no. Senza riassuntore il nodo
-    compatta non fa nulla e il contesto è controllato solo dalla finestra scorrevole. Senza router
-    ogni domanda passa all'agente. Il router restituisce un DecisioneRouter.
+    Il modello ha già gli strumenti collegati; riassuntore, router e revisore no. Senza riassuntore il
+    nodo compatta non fa nulla e il contesto è controllato solo dalla finestra scorrevole. Senza router
+    ogni domanda passa all'agente; senza revisore ogni risposta è approvata. Router e revisore
+    restituiscono un DecisioneRouter e un DecisioneRevisore.
     """
     prompt = "\n".join([PROMPT_SISTEMA.format(fuso=fuso_predefinito),
                         *(testo for nome, testo in ISTRUZIONI_PER_STRUMENTO.items()
@@ -248,6 +299,35 @@ def costruisci_grafo(modello: Runnable, strumenti: list[BaseTool], *, max_passi:
         logger.info("agente: invio %d messaggi al modello", len(da_inviare))
         return {"messages": [modello.invoke(da_inviare)]}
 
+    def nodo_revisore(stato: AgentState) -> dict:
+        if revisore is None:
+            return {}
+        revisioni = stato.get("revisioni", 0)
+        testo = (f"Domanda dell'utente: {domanda_del_turno(stato['messages'])}\n\n"
+                 f"Risposta proposta: {stato['messages'][-1].content}")
+        # print("[passo] nodo revisore: chiedo al modello se la risposta è coerente con la domanda")
+        try:
+            decisione = revisore.invoke([SystemMessage(PROMPT_REVISORE), HumanMessage(testo)])
+        except (openai.APIError, ValueError) as errore:  # ValueError: output non valido per lo schema
+            logger.warning("revisore non riuscito, risposta accettata: %s", errore)
+            return {}
+        if not isinstance(decisione, DecisioneRevisore):
+            logger.warning("revisore non riuscito, risposta accettata: output %r", decisione)
+            return {}
+        motivo = decisione.motivo.replace("\n", " ")
+        if decisione.coerente:
+            logger.info("revisore: coerente=si motivo=%s -> fine", motivo)
+            return {}
+        if revisioni >= max_revisioni:
+            logger.info("revisore: coerente=no motivo=%s -> fine", motivo)
+            logger.warning("revisore: limite di %d revisioni raggiunto, restituita l'ultima risposta",
+                           max_revisioni)
+            return {}
+        logger.info("revisore: coerente=no motivo=%s -> agente (revisione %d di %d)",
+                    motivo, revisioni + 1, max_revisioni)
+        nota = HumanMessage(NOTA_REVISORE.format(motivo=motivo), name=NOME_REVISORE)
+        return {"messages": [nota], "revisioni": revisioni + 1}
+
     def nodo_strumenti(stato: AgentState) -> dict:
         richieste = _richieste(stato["messages"][-1])
         # print(f"[passo] nodo strumenti: eseguo {len(richieste)} tool_call")
@@ -290,14 +370,16 @@ def costruisci_grafo(modello: Runnable, strumenti: list[BaseTool], *, max_passi:
     grafo.add_node("llm", nodo_llm)
     grafo.add_node("strumenti", nodo_strumenti)
     grafo.add_node("limite", nodo_limite)
+    grafo.add_node("revisore", nodo_revisore)
     grafo.add_edge(START, "compatta")
     grafo.add_edge("compatta", "router")
     grafo.add_conditional_edges("router", instrada_dopo_router, {"llm": "llm", "rifiuto": "rifiuto"})
     grafo.add_edge("rifiuto", END)
     grafo.add_conditional_edges(
         "llm", lambda stato: instrada_dopo_llm(stato, max_passi),
-        {"strumenti": "strumenti", "limite": "limite", END: END},
+        {"strumenti": "strumenti", "limite": "limite", "revisore": "revisore"},
     )
+    grafo.add_conditional_edges("revisore", instrada_dopo_revisore, {"llm": "llm", END: END})
     grafo.add_edge("strumenti", "llm")
     grafo.add_edge("limite", END)
     return grafo.compile()

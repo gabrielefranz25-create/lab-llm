@@ -9,7 +9,8 @@ from langchain_core.tools import BaseTool
 from agente.client import avvia_sessione
 from agente.config import Config, ErroreConfigurazione, carica_config
 from agente.graph import costruisci_grafo, limite_ricorsione
-from agente.llm import ErroreModello, crea_modello, crea_riassuntore, crea_router, verifica_modello
+from agente.llm import (ErroreModello, crea_modello, crea_revisore, crea_riassuntore, crea_router,
+                        verifica_modello)
 from agente.mcp_ponte import ConnessioneMCP, ServerMCP, unisci_strumenti
 from agente.strumenti import crea_ora_corrente, crea_ora_corrente_http
 from server_mcp.avvio import PERCORSO_HTTP, PORTE_HTTP
@@ -80,9 +81,9 @@ def main() -> int:
         print(f"Errore di configurazione: {errore}", file=sys.stderr)
         return 1
     configura_logging(config.log_level)
-    logger.info("avvio: modello=%s server=%s max_passi=%d contesto=%d da_tenere=%d", config.lm_model,
-                config.lm_base_url, config.max_passi_strumento, config.max_messaggi_contesto,
-                config.messaggi_da_tenere)
+    logger.info("avvio: modello=%s server=%s max_passi=%d contesto=%d da_tenere=%d max_revisioni=%d",
+                config.lm_model, config.lm_base_url, config.max_passi_strumento,
+                config.max_messaggi_contesto, config.messaggi_da_tenere, config.max_revisioni)
     logger.info("ambito del router: %s", config.ambito)
     logger.info("trasporto MCP: %s", config.trasporto_mcp)
     try:
@@ -106,6 +107,8 @@ def main() -> int:
                 messaggi_da_tenere=config.messaggi_da_tenere,
                 router=crea_router(config),
                 ambito=config.ambito,
+                revisore=crea_revisore(config),
+                max_revisioni=config.max_revisioni,
             )
             avvia_sessione(
                 grafo,
@@ -113,7 +116,7 @@ def main() -> int:
                               f"Fuso predefinito: {config.fuso_orario_predefinito}  |  "
                               f"Strumenti: {', '.join(s.name for s in strumenti)}"),
                 server=config.lm_base_url,
-                recursion_limit=limite_ricorsione(config.max_passi_strumento),
+                recursion_limit=limite_ricorsione(config.max_passi_strumento, config.max_revisioni),
             )
     except KeyboardInterrupt:  # Ctrl+C durante l'avvio dei server MCP
         print("Interrotto.", file=sys.stderr)

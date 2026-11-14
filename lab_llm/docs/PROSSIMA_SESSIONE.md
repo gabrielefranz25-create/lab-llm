@@ -36,6 +36,13 @@
   scritti e committati senza attendere l'approvazione, resoconto a fine blocco. Push solo su richiesta.
 - Blocco C (Streamable HTTP, `TRASPORTO_MCP`) fatto su `feat/mcp-http`. Lezione 5 completa.
 - Ordine rimasto: lezione 6 dallo step 2 (revisore) allo step 9.
+- Step 2 avviato sul branch `feat/revisore` (da `dev`): specifica scritta
+  (`docs/superpowers/specs/2026-11-13-revisore-design.md`); mancano piano e implementazione.
+
+## Stato al 2026-11-14 (step 2 fatto)
+- Step 2 (revisore) su `feat/revisore`, unito in `dev`: nodo `revisore` dopo l'agente, `MAX_REVISIONI`
+  (default 2), nota del revisore nella cronologia. Prove reali in `tests/reale/test_revisore_reale.py`.
+- Prossimo: step 3 (riassunto come campo dello stato), poi 4–9.
 
 ## Prompt da incollare (ripartenza)
 ```

@@ -185,3 +185,18 @@ def test_trasporto_mcp_http():
 def test_trasporto_mcp_sconosciuto():
     with pytest.raises(ErroreConfigurazione, match="TRASPORTO_MCP deve essere uno tra stdio, http"):
         carica_config({**MINIMO, "TRASPORTO_MCP": "sse"})
+
+
+def test_max_revisioni_predefinito():
+    assert carica_config(MINIMO).max_revisioni == 2
+
+
+@pytest.mark.parametrize("valore, atteso", [("0", 0), ("4", 4)])
+def test_max_revisioni_valido(valore, atteso):
+    assert carica_config({**MINIMO, "MAX_REVISIONI": valore}).max_revisioni == atteso
+
+
+@pytest.mark.parametrize("valore", ["-1", "due"])
+def test_max_revisioni_non_valido(valore):
+    with pytest.raises(ErroreConfigurazione, match="MAX_REVISIONI"):
+        carica_config({**MINIMO, "MAX_REVISIONI": valore})

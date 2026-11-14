@@ -27,7 +27,10 @@
    turno finisce senza passare dall'agente; se è `conversazione` si prosegue.
 4. Il nodo `llm` manda al modello il prompt di sistema (con l'eventuale riassunto) e gli ultimi
    messaggi della cronologia.
-5. Se il modello risponde con del testo, il turno finisce e il client stampa `Assistente> ...`.
+5. Se il modello risponde con del testo, il nodo `revisore` chiede al modello (senza strumenti, con
+   output strutturato) se la risposta tratta tutte le parti della domanda. Se sì, o se si è già al
+   limite `MAX_REVISIONI`, il turno finisce e il client stampa `Assistente> ...`; altrimenti una nota
+   del revisore con il motivo entra nella cronologia e si torna al nodo `llm`.
 6. Se il modello chiede uno strumento (una *tool_call*), il nodo `strumenti` lo esegue e aggiunge il
    risultato alla cronologia; poi si torna al nodo `llm`, che ora vede l'ora vera e risponde.
 7. Se il modello continua a chiedere strumenti oltre `MAX_PASSI_STRUMENTO` volte, il nodo `limite`
@@ -57,9 +60,10 @@ main.py ──► config.py        variabili d'ambiente → Config (errori chiar
 ```
                                                    ┌────────────────────────────────────────────┐
                                                    ▼                                            │
-START ─► compatta ─► router ─► instrada_dopo_router ─► llm ─► instrada_dopo_llm ─┬─ nessuna tool_call ──────────► END
-                                    │ (conversazione)                            ├─ tool_call e passi < MAX ─► strumenti
-                                    │                                            └─ tool_call e passi ≥ MAX ─► limite ─► END
+START ─► compatta ─► router ─► instrada_dopo_router ─► llm ─► instrada_dopo_llm ─┬─ nessuna tool_call ─► revisore ─► instrada_dopo_revisore ─┬─ coerente o limite ─► END
+                                    │ (conversazione)            ▲               ├─ tool_call e passi < MAX ─► strumenti                   │
+                                    │                            │               └─ tool_call e passi ≥ MAX ─► limite ─► END                │
+                                    │                            └────────────────────────────────── nota del revisore (non coerente) ─────┘
                                     └─ fuori_ambito ─► rifiuto ─► END
 ```
 
@@ -80,12 +84,15 @@ graph TD;
 	llm(llm)
 	strumenti(strumenti)
 	limite(limite)
+	revisore(revisore)
 	__end__([<p>__end__</p>]):::last
 	__start__ --> compatta;
 	compatta --> router;
-	llm -.-> __end__;
 	llm -.-> limite;
+	llm -.-> revisore;
 	llm -.-> strumenti;
+	revisore -.-> __end__;
+	revisore -.-> llm;
 	router -.-> llm;
 	router -.-> rifiuto;
 	strumenti --> llm;
@@ -99,7 +106,7 @@ graph TD;
 Per rigenerarlo (con una lambda al posto del modello: per disegnare il grafo non serve LM Studio):
 
 ```powershell
-python -c "from langchain_core.runnables import RunnableLambda; from agente.graph import costruisci_grafo; from agente.strumenti import crea_ora_corrente; g = costruisci_grafo(RunnableLambda(lambda m: m), [crea_ora_corrente()], max_passi=3, max_messaggi_contesto=20, fuso_predefinito='Europe/Rome', riassuntore=RunnableLambda(lambda m: m), router=RunnableLambda(lambda m: m), ambito='x'); print(g.get_graph().draw_mermaid())"
+python -c "from langchain_core.runnables import RunnableLambda; from agente.graph import costruisci_grafo; from agente.strumenti import crea_ora_corrente; g = costruisci_grafo(RunnableLambda(lambda m: m), [crea_ora_corrente()], max_passi=3, max_messaggi_contesto=20, fuso_predefinito='Europe/Rome', riassuntore=RunnableLambda(lambda m: m), router=RunnableLambda(lambda m: m), ambito='x', revisore=RunnableLambda(lambda m: m)); print(g.get_graph().draw_mermaid())"
 ```
 
 ## Stato
@@ -109,6 +116,7 @@ class AgentState(TypedDict):
     messages: Annotated[list[AnyMessage], add_messages]  # cronologia (Human/AI/Tool)
     passi_strumento: int                                   # giri di strumento nel turno corrente
     categoria: str                                         # decisione del router per il turno corrente
+    revisioni: int                                         # revisioni chieste dal revisore nel turno
 ```
 
 - `messages` usa il reducer `add_messages`: ogni nodo restituisce solo i messaggi **nuovi**, che
@@ -116,6 +124,8 @@ class AgentState(TypedDict):
 - `passi_strumento` non ha reducer: il valore restituito sostituisce il precedente. Il client lo
   riparte da 0 a ogni domanda.
 - `categoria` non ha reducer: la scrive il nodo `router` a ogni turno (`conversazione` o `fuori_ambito`).
+- `revisioni` non ha reducer: la incrementa il nodo `revisore` quando rimanda la risposta all'agente;
+  il client la riparte da 0 a ogni domanda.
 - Il prompt di sistema **non** sta nello stato: il nodo `llm` lo mette in testa a ogni chiamata.
 
 ## Nodi e instradamento
@@ -128,17 +138,21 @@ class AgentState(TypedDict):
 | `llm` | invia `[prompt di sistema + riassunto] + finestra_contesto(messages)` al modello, che ha già lo strumento collegato (`bind_tools`) | `{"messages": [AIMessage]}` |
 | `strumenti` | esegue **ogni** tool_call dell'ultimo messaggio; scrive un log INFO per ciascuna; uno strumento sconosciuto, argomenti sbagliati o argomenti che non sono JSON valido (le `invalid_tool_calls` di LangChain) diventano un testo d'errore, non un'eccezione | `{"messages": [ToolMessage, ...], "passi_strumento": passi + 1}` |
 | `limite` | risponde «Non eseguito» a ogni tool_call rimasta in sospeso (altrimenti la cronologia non sarebbe valida per l'API) e aggiunge il messaggio per l'utente; log WARNING | `{"messages": [ToolMessage, ..., AIMessage]}` |
+| `revisore` | manda al revisore (stesso modello senza strumenti, `with_structured_output(DecisioneRevisore)`) `PROMPT_REVISORE` e un messaggio con la domanda del turno e la risposta proposta; log INFO con giudizio, motivo e destinazione; se non coerente e sotto `MAX_REVISIONI` aggiunge la nota del revisore (`HumanMessage` di nome `revisore`, non un `SystemMessage`: alcuni modelli ne accettano uno solo, in testa); al limite WARNING; errore o output non valido → WARNING e risposta accettata | `{}` oppure `{"messages": [HumanMessage], "revisioni": revisioni + 1}` |
 
 Le tool_call con argomenti non JSON contano come tool_call: l'API le rimanda al modello, quindi
 devono ricevere anch'esse un `ToolMessage`, altrimenti la cronologia non sarebbe più valida.
 
 `instrada_dopo_router(stato)`: `fuori_ambito` → `rifiuto`, altrimenti → `llm`.
 
-`instrada_dopo_llm(stato, max_passi)` è una funzione pura: nessuna tool_call → `END`; tool_call con
+`instrada_dopo_llm(stato, max_passi)` è una funzione pura: nessuna tool_call → `revisore`; tool_call con
 `passi_strumento < max_passi` → `strumenti`; altrimenti → `limite`.
 
-Come rete di sicurezza il client passa a `invoke()` un `recursion_limit` di `2 * MAX_PASSI_STRUMENTO + 5`.
-Con il nodo `limite` non dovrebbe mai scattare; se scatta, il client mostra un errore leggibile.
+`instrada_dopo_revisore(stato)`: ultimo messaggio nota del revisore → `llm`, altrimenti → `END`.
+
+Come rete di sicurezza il client passa a `invoke()` un `recursion_limit` di
+`2 * MAX_PASSI_STRUMENTO + 2 * MAX_REVISIONI + 6`. Con i nodi `limite` e `revisore` non dovrebbe mai
+scattare; se scatta, il client mostra un errore leggibile.
 
 ## Lo strumento `ora_corrente`
 
@@ -341,10 +355,13 @@ stampata.
 
 | Evento | Livello | Esempio |
 |---|---|---|
-| avvio | INFO | `avvio: modello=google/gemma-4-e2b server=http://localhost:1234/v1 max_passi=3 contesto=20 da_tenere=6` |
+| avvio | INFO | `avvio: modello=google/gemma-4-e2b server=http://localhost:1234/v1 max_passi=3 contesto=20 da_tenere=6 max_revisioni=2` |
 | decisione del router | INFO | `router: categoria=fuori_ambito motivo=La domanda non riguarda data, ora, meteo o note personali. -> rifiuto` |
 | agente eseguito (assente se la domanda è rifiutata) | INFO | `agente: invio 2 messaggi al modello` |
 | router non riuscito | WARNING | `router non riuscito, domanda passata all'agente: Connection error.` |
+| giudizio del revisore | INFO | `revisore: coerente=no motivo=La risposta tratta solo l'ora a Tokyo e ignora il calcolo. -> agente (revisione 1 di 2)` |
+| limite di revisioni | WARNING | `revisore: limite di 2 revisioni raggiunto, restituita l'ultima risposta` |
+| revisore non riuscito | WARNING | `revisore non riuscito, risposta accettata: Connection error.` |
 | cronologia compattata | INFO | `compattati 16 messaggi, tenuti 5` |
 | riassunto non riuscito | WARNING | `riassunto non riuscito, cronologia lasciata intera: Connection error.` |
 | chiamata a uno strumento | INFO | `strumento=ora_corrente origine=locale call_id=... argomenti={"fuso_orario": "Asia/Tokyo"} esito=ok risultato=Fuso orario: Asia/Tokyo ...` |
