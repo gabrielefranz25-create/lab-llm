@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 
 from agente.comandi import ErroreComando
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("agente.servizio")  # anche se avviato con python -m
 
 
 class RichiestaPrompt(BaseModel):
