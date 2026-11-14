@@ -18,7 +18,7 @@ from server_mcp.avvio import PORTE_HTTP
 
 # Cartella `lab_llm/`: i server si avviano con `-m server_mcp.<nome>` da qui.
 CARTELLA_PROGETTO = Path(__file__).resolve().parents[1]
-SERVER_SCEGLIBILI = tuple(nome for nome in PORTE_HTTP if nome != "orologio")
+SERVER_SCEGLIBILI = tuple(nome for nome in PORTE_HTTP if nome not in ("orologio", "utente"))
 
 
 def processi_da_avviare(ambiente: Mapping[str, str]) -> list[tuple[str, list[str], dict[str, str]]]:
@@ -35,7 +35,7 @@ def processi_da_avviare(ambiente: Mapping[str, str]) -> list[tuple[str, list[str
     env.pop("MCP_HTTP_PORTA", None)  # vale per un solo server: qui ognuno usa la propria porta
     env.setdefault("FUSO_ORARIO", ambiente.get("FUSO_ORARIO_PREDEFINITO") or "Europe/Rome")
     return [(nome, [sys.executable, "-m", f"server_mcp.{nome}"], dict(env))
-            for nome in PORTE_HTTP if nome in scelti or nome == "orologio"]
+            for nome in PORTE_HTTP if nome in scelti or nome in ("orologio", "utente")]
 
 
 def _arresto(*_):

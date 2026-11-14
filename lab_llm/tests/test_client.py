@@ -12,7 +12,7 @@ import agente.main
 from agente.client import avvia_sessione, rispondi
 from agente.graph import costruisci_grafo
 from agente.config import carica_config
-from agente.main import configura_logging, main, server_da_config, strumenti_orologio
+from agente.main import configura_logging, main, server_da_config, server_utente, strumenti_orologio
 from agente.strumenti import crea_ora_corrente
 
 SERVER = "http://h:1/v1"
@@ -239,7 +239,7 @@ def test_strumenti_orologio_mcp_arriva_dal_catalogo(caplog):
     assert "orologio: variante=mcp percorso=server MCP orologio (stdio)" in caplog.text
 
 
-def _avvia_main_con_mcp(monkeypatch, connessione):
+def _avvia_main_con_mcp(monkeypatch, connessione, preferenze=None):
     monkeypatch.setattr(agente.config, "load_dotenv", lambda **_: None)
     monkeypatch.setenv("LM_BASE_URL", SERVER)
     monkeypatch.setenv("LM_MODEL", "m")
@@ -247,6 +247,7 @@ def _avvia_main_con_mcp(monkeypatch, connessione):
     monkeypatch.setattr(agente.main, "crea_modello", lambda _config, _strumenti: object())
     monkeypatch.setattr(agente.main, "crea_riassuntore", lambda _config: object())
     monkeypatch.setattr(agente.main, "ConnessioneMCP", connessione)
+    monkeypatch.setattr(agente.main, "leggi_preferenze", lambda server, timeout, base: preferenze or base)
     return main()
 
 
@@ -324,3 +325,44 @@ def test_sessione_conserva_il_riassunto_tra_i_turni():
     _sessione(Grafo(), ["uno", "due", "esci"])
     assert stati[0]["riassunto"] == "" and stati[1]["riassunto"] == "riassunto 1"
     assert [m.content for m in stati[1]["messages"]] == ["uno", "ok", "due"]
+
+
+def test_main_applica_le_preferenze_lette_dalla_resource(monkeypatch):
+    from agente.preferenze import Preferenze
+    visto = {}
+
+    class Finta:
+        def __init__(self, servers, timeout):
+            visto["servers"] = servers
+            self.strumenti = []
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+    def grafo_finto(modello, strumenti, **argomenti):
+        visto.update(argomenti)
+        return object()
+
+    monkeypatch.setattr(agente.main, "costruisci_grafo", grafo_finto)
+    monkeypatch.setattr(agente.main, "avvia_sessione",
+                        lambda grafo, intestazione, server, recursion_limit: visto.update(testata=intestazione))
+    preferenze = Preferenze("inglese", "America/New_York", "dettagliato")
+    assert _avvia_main_con_mcp(monkeypatch, Finta, preferenze) == 0
+    assert visto["fuso_predefinito"] == "America/New_York"
+    assert visto["preferenze"].startswith("Rispondi sempre in inglese")
+    scadenze = next(s for s in visto["servers"] if s.nome == "scadenze")
+    assert scadenze.env["FUSO_ORARIO"] == "America/New_York"
+    assert "Fuso predefinito: America/New_York" in visto["testata"]
+    assert "Preferenze: lingua=inglese, stile=dettagliato" in visto["testata"]
+
+
+def test_server_utente_stdio_e_http():
+    config = _config(PREFERENZE_FILE="dati/pref.json")
+    server = server_utente(config)
+    assert server.argomenti == ("-m", "server_mcp.utente") and server.url is None
+    assert server.env["PREFERENZE_FILE"] == "dati/pref.json" and server.env["MCP_TRASPORTO"] == "stdio"
+    http = server_utente(_config(TRASPORTO_MCP="http", MCP_HTTP_HOST="server-mcp"))
+    assert http.url == "http://server-mcp:8108/mcp"

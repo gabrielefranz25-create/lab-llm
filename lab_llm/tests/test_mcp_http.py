@@ -75,3 +75,14 @@ def test_chiamata_via_http_come_via_stdio():
         assert calcola.invoke({"espressione": "2+3"}) == "2+3 = 5"
         assert calcola.invoke({"espressione": "__import__('os')"}).startswith(
             "Errore dallo strumento calcola: ")
+
+
+def test_resource_letta_via_http_come_via_stdio():
+    stdio = ServerMCP("utente", ("-m", "server_mcp.utente"))
+    with ConnessioneMCP([stdio], timeout=30) as connessione:
+        via_stdio = connessione.leggi_risorsa("utente", "utente://preferenze")
+    with server_http("utente", {}) as url, \
+            ConnessioneMCP([ServerMCP("utente", (), url=url)], timeout=30) as connessione:
+        assert connessione.cataloghi["utente"] == []  # la resource non è un tool
+        via_http = connessione.leggi_risorsa("utente", "utente://preferenze")
+    assert via_http == via_stdio and '"fuso_orario"' in via_http

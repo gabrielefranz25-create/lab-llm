@@ -200,3 +200,8 @@ def test_max_revisioni_valido(valore, atteso):
 def test_max_revisioni_non_valido(valore):
     with pytest.raises(ErroreConfigurazione, match="MAX_REVISIONI"):
         carica_config({**MINIMO, "MAX_REVISIONI": valore})
+
+
+def test_file_delle_preferenze():
+    assert carica_config(MINIMO).preferenze_file == "server_mcp/risorse/preferenze.json"
+    assert carica_config({**MINIMO, "PREFERENZE_FILE": "dati/pref.json"}).preferenze_file == "dati/pref.json"

@@ -25,7 +25,7 @@ def ambiente_pulito(monkeypatch):
 
 def test_porte_fisse_per_ogni_server():
     assert PORTE_HTTP == {"meteo": 8101, "note": 8102, "unita": 8103, "calcolatrice": 8104,
-                          "scadenze": 8105, "catalogo": 8106, "orologio": 8107}
+                          "scadenze": 8105, "catalogo": 8106, "orologio": 8107, "utente": 8108}
 
 
 def test_stdio_predefinito():

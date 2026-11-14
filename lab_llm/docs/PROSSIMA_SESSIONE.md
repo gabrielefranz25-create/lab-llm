@@ -43,7 +43,8 @@
 - Step 2 (revisore) su `feat/revisore`, unito in `dev`: nodo `revisore` dopo l'agente, `MAX_REVISIONI`
   (default 2), nota del revisore nella cronologia. Prove reali in `tests/reale/test_revisore_reale.py`.
 - Step 3 (riassunto come campo dello stato) su `feat/riassunto`, unito in `dev`.
-- Prossimo: step 4 (resource `utente://preferenze`), poi 5–9.
+- Step 4 (resource `utente://preferenze`, server `utente`) su `feat/preferenze`, unito in `dev`.
+- Prossimo: step 5 (prompt MCP `/prompts` e `/prompt`), poi 6–9.
 
 ## Prompt da incollare (ripartenza)
 ```

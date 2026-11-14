@@ -44,7 +44,8 @@
 main.py ──► config.py        variabili d'ambiente → Config (errori chiari, uscita 1)
    │──────► llm.py           ChatOpenAI verso LM Studio (con strumenti e riassuntore senza) + verifica
    │──────► strumenti.py     strumento ora_corrente
-   │──────► mcp_ponte.py     avvia i server MCP e ne espone il catalogo come tool sincroni
+   │──────► preferenze.py    legge la resource utente://preferenze (una volta, all'avvio)
+   │──────► mcp_ponte.py     avvia i server MCP e ne espone il catalogo come tool sincroni; legge le resource
    │──────► graph.py         stato, nodi, instradamento, compattazione, finestra di contesto
    └──────► client.py        ciclo della chat e cronologia
 ```
@@ -320,6 +321,33 @@ Alcune istruzioni valgono solo se lo strumento è collegato: stanno in `ISTRUZIO
 `calcola` non era collegato (4 su 4 «Che ore sono?» senza chiamata a `ora_corrente`): citare uno
 strumento assente confonde il modello.
 
+## Preferenze dell'utente: la resource `utente://preferenze`
+
+| Primitiva | Chi la attiva | Quando | Nei log |
+|---|---|---|---|
+| tool | il modello | durante il ciclo | `strumento=… origine=mcp:… esito=…` a ogni chiamata |
+| resource | l'host (`main.py`) | una volta, prima di avviare gli altri server e della prima domanda | `resource: utente://preferenze letta dal server utente: …` |
+
+- Il server `utente` (`server_mcp/utente.py`) non ha tool: espone solo la resource, che restituisce il
+  file `PREFERENZE_FILE` (riletto a ogni richiesta). Esempio:
+  `{"lingua": "italiano", "fuso_orario": "Europe/Rome", "stile": "sintetico"}`.
+- `leggi_preferenze` apre una connessione MCP con il solo server `utente`, chiama
+  `ConnessioneMCP.leggi_risorsa` (`resources/read`) e chiude. È separata dalla connessione dei tool perché
+  il fuso delle preferenze serve **prima** di avviare l'orologio e `scadenze` (che lo ricevono in
+  `FUSO_ORARIO`).
+- `interpreta` controlla ogni campo: lingua non vuota, fuso IANA esistente, stile `sintetico` o
+  `dettagliato`. Un campo non valido torna al predefinito (WARNING `preferenze: stile='poetico' non
+  valido, …`); server spento, file mancante o JSON non valido → tutti i predefiniti (WARNING
+  `preferenze: resource utente://preferenze non disponibile, uso i valori predefiniti (…): …`).
+- `main.py` sostituisce `fuso_orario_predefinito` nella `Config` della sessione e passa al grafo
+  `preferenze=istruzioni(...)`, che completa la prima riga del prompt di sistema:
+  `Sei l'assistente del laboratorio. Rispondi sempre in italiano, in modo breve e chiaro.` La forma è
+  volutamente asciutta. Sonde reali del 2026-11-14 (3 tentativi per variante): con l'URI della resource, lo stile tra
+  parentesi e il fuso nella riga gemma-4-e2b inventava l'ora (0 chiamate a `ora_corrente` su 3); con
+  l'etichetta «Preferenze dell'utente:» o con le preferenze prima di «Sei l'assistente del
+  laboratorio.» non chiamava `calcola` per «15 per 12» (0 su 3), e lo stesso togliendo «(ora
+  italiana)». Con la forma attuale 3 su 3. «(ora italiana)» resta solo con `Europe/Rome`.
+
 ## Compattazione della cronologia (nodo `compatta`)
 
 - Scatta all'inizio del turno quando la cronologia supera `MAX_MESSAGGI_CONTESTO` (default 20).
@@ -368,6 +396,8 @@ stampata.
 | decisione del router | INFO | `router: categoria=fuori_ambito motivo=La domanda non riguarda data, ora, meteo o note personali. -> rifiuto` |
 | agente eseguito (assente se la domanda è rifiutata) | INFO | `agente: invio 2 messaggi al modello` |
 | router non riuscito | WARNING | `router non riuscito, domanda passata all'agente: Connection error.` |
+| resource letta all'avvio | INFO | `resource: utente://preferenze letta dal server utente: lingua=italiano fuso_orario=America/New_York stile=sintetico` |
+| resource non disponibile o campo non valido | WARNING | `preferenze: resource utente://preferenze non disponibile, uso i valori predefiniti (lingua=italiano fuso_orario=Europe/Rome stile=sintetico): …` |
 | giudizio del revisore | INFO | `revisore: coerente=no motivo=La risposta tratta solo l'ora a Tokyo e ignora il calcolo. -> agente (revisione 1 di 2)` |
 | limite di revisioni | WARNING | `revisore: limite di 2 revisioni raggiunto, restituita l'ultima risposta` |
 | revisore non riuscito | WARNING | `revisore non riuscito, risposta accettata: Connection error.` |

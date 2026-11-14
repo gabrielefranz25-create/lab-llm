@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_core.tools import StructuredTool
 
-from agente.graph import MESSAGGIO_LIMITE, PROMPT_SISTEMA, costruisci_grafo
+from agente.graph import ISTRUZIONI_PREDEFINITE, MESSAGGIO_LIMITE, PROMPT_SISTEMA, costruisci_grafo
 from agente.strumenti import crea_ora_corrente
 
 INVERNO = datetime(2026, 1, 15, 10, 0, tzinfo=timezone.utc)
@@ -233,3 +233,30 @@ def test_istruzione_calcoli_solo_con_calcola_attivo():
     assert "`calcola`" in con_calcola and "«per»" in con_calcola and "moltiplicazione" in con_calcola
     assert "calcola" not in _prompt_inviato([orologio])
     assert "calcola" not in PROMPT_SISTEMA
+
+
+def _prompt_con_preferenze(**argomenti) -> str:
+    modello = ModelloFinto([AIMessage("ok")])
+    _esegui(costruisci_grafo(modello, [crea_ora_corrente(orologio=lambda: INVERNO)], max_passi=3,
+                             max_messaggi_contesto=20, fuso_predefinito="America/New_York", **argomenti))
+    return modello.chiamate[0][0].content
+
+
+def test_preferenze_in_cima_al_prompt_di_sistema():
+    preferenze = "Rispondi sempre in inglese, in modo breve e chiaro."
+    prompt = _prompt_con_preferenze(preferenze=preferenze)
+    assert prompt.startswith("Sei l'assistente del laboratorio. " + preferenze + "\n")
+    assert "America/New_York" in prompt and "ora italiana" not in prompt  # vera solo per Europe/Rome
+    assert "Rispondi in italiano" not in prompt
+
+
+def test_senza_preferenze_istruzioni_predefinite_in_cima():
+    assert _prompt_con_preferenze().startswith(
+        "Sei l'assistente del laboratorio. " + ISTRUZIONI_PREDEFINITE + "\n")
+    assert "italiano" in ISTRUZIONI_PREDEFINITE
+
+
+def test_ora_italiana_solo_con_il_fuso_di_roma():
+    # Sonda reale del 2026-11-14: senza «(ora italiana)» gemma-4-e2b chiamava meno `calcola`.
+    assert "Europe/Rome (ora italiana)." in _prompt_inviato([crea_ora_corrente(orologio=lambda: INVERNO)])
+    assert "(ora italiana)" not in _prompt_con_preferenze()

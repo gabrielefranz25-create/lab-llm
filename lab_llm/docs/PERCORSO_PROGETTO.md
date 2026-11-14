@@ -212,12 +212,35 @@ Materiale: `materiali/LLM_Lez_6.pdf`. Uno step alla volta, ciascuno con spec, pi
 - Esiti: `python -m pytest` → 343 passati, 28 skipped; prova reale del riassunto → 1 passata; a mano, dopo due
   compressioni, «Ti chiami Gabriele e vivi a Udine.».
 
+#### Step 4 (14/11): resource `utente://preferenze`. Branch `feat/preferenze`
+- Prompt: «riprendi il progetto e completalo», poi «continua»; modalità autonoma.
+- Skill e modalità: `superpowers:executing-plans` con `superpowers:test-driven-development`, modalità auto.
+- Specifica `specs/2026-11-14-preferenze-design.md` e piano `plans/2026-11-14-preferenze.md`.
+1. `docs`: specifica e piano.
+2. `feat(utente)`: server `server_mcp/utente.py` con la sola resource; file `risorse/preferenze.json`; porta 8108.
+3. `feat(mcp)`: `ConnessioneMCP.leggi_risorsa` (stdio e HTTP), errori come `ErroreMCP`.
+4. `feat(preferenze)`: `agente/preferenze.py` (lettura, controllo dei campi, predefiniti), `PREFERENZE_FILE`.
+5. `feat(grafo)`: preferenze in cima al prompt; via «Rispondi in italiano» e «(ora italiana)» da `PROMPT_SISTEMA`.
+6. `feat(main)`: preferenze lette prima della connessione dei tool; il loro fuso vale per tutta la sessione.
+7. `test(reale)`: fuso America/New_York senza chiederlo; lingua inglese e stile dettagliato. Prima versione
+   della riga del prompt con URI, stile tra parentesi e fuso: «Che ore sono?» senza chiamata a
+   `ora_corrente` (0 su 3, la riga senza preferenze 3 su 3); riga asciutta: 3 su 3.
+   La suite reale ha poi mostrato una regressione su `calcola` via HTTP (0 su 3): `fix(grafo)` con le
+   preferenze dopo «Sei l'assistente del laboratorio.», senza etichetta, e «(ora italiana)» solo con
+   `Europe/Rome` (sonde con tre varianti × due domande; ora 3 su 3).
+8. `build(docker)` e `docs`: file delle preferenze montato in sola lettura; guide aggiornate.
+- Esiti: `python -m pytest` → 370 passati, 30 skipped; suite reale (`-m reale`) → 28 su 30 (falliti
+  `calcola` via HTTP e meteo attuale, che rilanciati insieme agli altri test MCP passano 8 su 8: risposte
+  non deterministiche del modello nella suite lunga, da tenere d'occhio). In Docker, senza ricostruire:
+  file con `Europe/Rome` → `ora_corrente({"fuso_orario": "Europe/Rome"})`; cambiato in
+  `America/New_York` → `ora_corrente({})` e risposta con l'ora di New York.
+
 | Step | Cosa | Evidenza minima | Stato |
 |---|---|---|---|
 | 1 | Router: in ambito o fuori ambito | domanda fuori ambito rifiutata senza passare dall'agente | fatto (`feat/router`) |
 | 2 | Revisore: risposta coerente | risposta incompleta corretta entro il limite | fatto (`feat/revisore`) |
 | 3 | Riassunto della cronologia | info del primo turno usata dopo la compressione | fatto (`feat/riassunto`) |
-| 4 | Resource MCP `utente://preferenze` | preferenze applicate; si cambia il file, non il codice | da fare |
+| 4 | Resource MCP `utente://preferenze` | preferenze applicate; si cambia il file, non il codice | fatto (`feat/preferenze`) |
 | 5 | Prompt MCP `/prompts`, `/prompt` | comandi funzionanti con argomenti validati | da fare |
 | 6 | Agente come servizio HTTP | stessa risposta da CLI e da API | da fare |
 | 7 | Back-end + PostgreSQL | chat persistenti dopo il riavvio; OpenAPI | da fare |

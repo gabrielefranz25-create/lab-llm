@@ -12,6 +12,8 @@ services:
     tty: true
     volumes:
       - note:/app/dati
+      # Resource utente://preferenze (lezione 6, step 4): il file dell'host, modificabile senza ricostruire.
+      - ./server_mcp/risorse/preferenze.json:/app/server_mcp/risorse/preferenze.json:ro
 
   # Variante 02 dell'orologio: servizio FastAPI separato, avviato solo con il profilo "fastapi":
   #   docker compose --profile fastapi up -d orologio-api
@@ -35,6 +37,7 @@ services:
       MCP_HTTP_ASCOLTO: 0.0.0.0   # raggiungibili dagli altri container; porte non pubblicate sull'host
     volumes:
       - note:/app/dati            # le note sono le stesse della modalità stdio
+      - ./server_mcp/risorse/preferenze.json:/app/server_mcp/risorse/preferenze.json:ro
 
 volumes:
   note: {}

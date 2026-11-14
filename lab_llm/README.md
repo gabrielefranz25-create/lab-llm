@@ -35,6 +35,14 @@ Dallo step 2 un nodo **revisore** controlla, dopo l'agente, che la risposta trat
 domanda. Se non è coerente il motivo torna all'agente come nota nella cronologia, al massimo
 `MAX_REVISIONI` volte. Nel log compare `revisore: coerente=si|no motivo=… -> fine|agente (revisione k di N)`.
 
+Dallo step 4 lingua, stile (`sintetico` o `dettagliato`) e fuso predefinito vengono dalle **preferenze
+dell'utente**: il server MCP `utente` le espone come **resource** `utente://preferenze` (il file
+`server_mcp/risorse/preferenze.json`) e l'agente le legge una volta all'avvio, prima della prima domanda,
+mettendole in cima al prompt di sistema. La resource non è un tool: il modello non la vede e non la
+sceglie. Cambiando il file, la sessione successiva risponde di conseguenza, senza toccare il codice. Nel
+log: `resource: utente://preferenze letta dal server utente: lingua=… fuso_orario=… stile=…`; se la
+resource manca, un WARNING e i valori predefiniti (italiano, sintetico, `FUSO_ORARIO_PREDEFINITO`).
+
 Come funziona dentro (grafo, stato, nodi, strumenti, ponte MCP, log): [docs/COME_FUNZIONA.md](docs/COME_FUNZIONA.md).
 Docker su Windows e risoluzione dei problemi: [docs/GUIDA_DOCKER.md](docs/GUIDA_DOCKER.md).
 
@@ -87,6 +95,7 @@ Invoke-RestMethod http://localhost:1234/v1/models | Select-Object -ExpandPropert
 | `NOTE_DB` | no | `dati/note.sqlite3` | file SQLite delle note; in Docker sta nel volume `note` (vedi sotto); un percorso relativo parte dalla cartella `lab_llm/` (directory di lavoro dei server, `CARTELLA_PROGETTO` in `agente/mcp_ponte.py`), non da quella della shell |
 | `SERVER_MCP` | no | tutti (`meteo,note,unita,calcolatrice,scadenze,catalogo`) | server MCP da avviare, separati da virgole; se la variabile è presente ma vuota non parte nessun server; un nome sconosciuto dà un errore di configurazione |
 | `AMBITO_AGENTE` | no | ora e saluti + una frase per ogni server attivo | ambito dell'agente in linguaggio naturale, letto dal router; se manca si compone con `ambito_predefinito` in `agente/config.py` (`AMBITO_PER_SERVER`), così togliendo un server da `SERVER_MCP` il router smette di accettarne le domande; compare anche nel messaggio di rifiuto |
+| `PREFERENZE_FILE` | no | `server_mcp/risorse/preferenze.json` | file JSON delle preferenze (`lingua`, `fuso_orario`, `stile`) letto dal server `utente`; relativo a `lab_llm/`; il suo fuso prevale su `FUSO_ORARIO_PREDEFINITO` |
 | `MAX_REVISIONI` | no | `2` | revisioni per domanda chieste dal revisore, intero ≥ 0; con `0` il revisore giudica e scrive nel log ma non rimanda mai la risposta all'agente |
 | `PROVA_REALE` | no | — | solo per i test con LM Studio vero (vedi sotto) |
 
@@ -160,6 +169,8 @@ docker compose run --rm assistente
   ha chiamato `meteo_attuale` e `aggiungi_nota`. Le note stanno nel volume `note`: una seconda
   esecuzione con «Elenca le mie note» le ha ritrovate. Come svuotarle:
   [docs/GUIDA_DOCKER.md](docs/GUIDA_DOCKER.md), sezione 10.
+- Preferenze: `compose.yaml` monta `server_mcp/risorse/preferenze.json` dell'host in sola lettura, quindi
+  basta modificare il file e rilanciare `docker compose run --rm assistente`, senza ricostruire l'immagine.
 
 ## Test
 
@@ -226,7 +237,18 @@ Esito del 2026-11-14: `1 passed` con `riassunto: messaggi prima=7 dopo=1 (riassu
 con `$env:MAX_MESSAGGI_CONTESTO="6"; $env:MESSAGGI_DA_TENERE="2"; python -m agente`, dopo due compressioni
 «Come mi chiamo e dove vivo?» → «Ti chiami Gabriele e vivi a Udine.».
 
-Esito delle prove del revisore del 2026-11-14: `4 passed` in circa 3 minuti e mezzo. Nella quarta prova il log mostra
+Esito delle prove del revisore del 2026-11-14: `4 passed` in circa 3 minuti e mezzo.
+
+Prove reali delle preferenze (step 4): file temporaneo con `America/New_York` → «Che ore sono?» chiama
+`ora_corrente` senza argomenti e ottiene New York; file con lingua `inglese` e stile `dettagliato` →
+risposta in inglese:
+
+```powershell
+$env:PROVA_REALE="1"; python -m pytest tests/reale/test_preferenze_reale.py -v -o log_cli=true --log-cli-level=INFO
+Remove-Item Env:PROVA_REALE
+```
+
+Esito del 2026-11-14: `2 passed` in circa un minuto. Nella quarta prova il log mostra
 `revisore: coerente=no motivo=La risposta tratta solo la prima parte della domanda (l'ora a Tokyo) e
 ignora completamente la seconda parte … -> agente (revisione 1 di 2)`, poi `ora_corrente` e
 `calcola("15*12")`, poi `revisore: coerente=si`.
@@ -351,11 +373,11 @@ d'errore e il modello può riprovare entro `MAX_PASSI_STRUMENTO` giri: il progra
 
 ```
 lab_llm/
-├── agente/            codice: config, strumenti, mcp_ponte, graph, llm, client, main
+├── agente/            codice: config, strumenti, mcp_ponte, preferenze, graph, llm, client, main
 ├── servizio_orologio/ logica condivisa dell'orologio (logica.py) e servizio FastAPI (api.py)
-├── server_mcp/        server MCP (processi separati): meteo, note, unita, calcolatrice, scadenze, catalogo, orologio;
-│                      avvio.py = stdio o Streamable HTTP; avvia_http.py = tutti i server in HTTP;
-│                      risorse/ = festivita.json, corsi.json
+├── server_mcp/        server MCP (processi separati): meteo, note, unita, calcolatrice, scadenze, catalogo, orologio,
+│                      utente (resource utente://preferenze); avvio.py = stdio o Streamable HTTP;
+│                      avvia_http.py = tutti i server in HTTP; risorse/ = festivita.json, corsi.json, preferenze.json
 ├── tests/             test automatici; tests/reale/ = prove con LM Studio (PROVA_REALE=1)
 ├── docs/              COME_FUNZIONA, GUIDA_DOCKER, GUIDA_PASSO_PASSO, PROSSIMA_SESSIONE, specifica e piano (superpowers/)
 ├── .env.example       variabili d'esempio (.env reale fuori da Git)

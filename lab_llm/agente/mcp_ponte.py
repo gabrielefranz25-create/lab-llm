@@ -165,6 +165,31 @@ class ConnessioneMCP:
             self._loop.close()
         # print("[passo] ponte MCP chiuso")
 
+    # --- primitive dell'host: resource --------------------------------------------------------
+
+    def _esegui(self, nome_server: str, operazione):
+        """Esegue `operazione(client)` (una coroutine) sul loop del ponte e ne attende l'esito.
+
+        Errori del server o di collegamento diventano ErroreMCP, con il nome del server.
+        """
+        client = next((c.client for c in self._custodi if c.server.nome == nome_server and c.client), None)
+        if client is None:
+            raise ErroreMCP(f"server MCP {nome_server} non disponibile")
+        futuro = asyncio.run_coroutine_threadsafe(operazione(client), self._loop)
+        try:
+            return futuro.result(self.timeout)
+        except Exception as errore:
+            futuro.cancel()
+            dettaglio = (f"nessuna risposta entro {self.timeout} secondi"
+                         if isinstance(errore, TimeoutError) else _dettaglio(errore))
+            raise ErroreMCP(f"server MCP {nome_server}: {dettaglio}") from errore
+
+    def leggi_risorsa(self, nome_server: str, uri: str) -> str:
+        """`resources/read`: testo della resource `uri` del server (la sceglie l'host, non il modello)."""
+        # print(f"[passo] MCP {nome_server}: leggo la resource {uri}")
+        contenuti = self._esegui(nome_server, lambda client: client.read_resource(uri))
+        return "\n".join(c.text for c in contenuti if hasattr(c, "text"))
+
     # --- tool sincroni -----------------------------------------------------------------------
 
     def _crea_strumento(self, server: ServerMCP, client: Client, voce) -> StructuredTool:
@@ -205,6 +230,10 @@ class ConnessioneMCP:
             return f"Errore di collegamento MCP con il server {nome_server}: {dettaglio}"
         return "\n".join(blocco.text for blocco in risultato.content
                          if isinstance(blocco, TextContent))
+
+
+class ErroreMCP(Exception):
+    """Operazione dell'host (resource, prompt) non riuscita: server assente o errore del server."""
 
 
 def _dettaglio(errore: BaseException) -> str:
