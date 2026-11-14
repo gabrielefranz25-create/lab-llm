@@ -9,7 +9,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 
 import agente.config
 import agente.main
-from agente.client import avvia_sessione
+from agente.client import avvia_sessione, rispondi
 from agente.graph import costruisci_grafo
 from agente.config import carica_config
 from agente.main import configura_logging, main, server_da_config, strumenti_orologio
@@ -283,7 +283,17 @@ def test_main_intestazione_con_strumenti_mcp(monkeypatch):
             return False
 
     monkeypatch.setattr(agente.main, "avvia_sessione",
-                        lambda grafo, intestazione, server, recursion_limit: visto.update(testata=intestazione))
+                        lambda grafo, intestazione, server, recursion_limit: visto.update(
+                            testata=intestazione, limite=recursion_limit))
     assert _avvia_main_con_mcp(monkeypatch, Finta) == 0
     assert "Strumenti: ora_corrente, meteo_attuale" in visto["testata"]
+    assert visto["limite"] == 16  # 2*3 passi + 2*2 revisioni + 6
     assert visto["servers"][0].nome == "meteo" and visto["chiusa"]
+
+
+def test_rispondi_azzera_passi_e_revisioni():
+    grafo = GrafoFinto(None)
+    stati = []
+    grafo.invoke = lambda stato, config=None: stati.append(stato) or {"messages": stato["messages"] + [AIMessage("ok")]}
+    rispondi(grafo, [], "ciao", recursion_limit=16)
+    assert stati[0]["passi_strumento"] == 0 and stati[0]["revisioni"] == 0
