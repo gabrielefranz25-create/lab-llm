@@ -276,6 +276,9 @@ def test_main_intestazione_con_strumenti_mcp(monkeypatch):
             visto["servers"] = servers
             self.strumenti = [finto]
 
+        def elenca_prompt(self, server):
+            return []
+
         def __enter__(self):
             return self
 
@@ -284,12 +287,14 @@ def test_main_intestazione_con_strumenti_mcp(monkeypatch):
             return False
 
     monkeypatch.setattr(agente.main, "avvia_sessione",
-                        lambda grafo, intestazione, server, recursion_limit: visto.update(
-                            testata=intestazione, limite=recursion_limit))
+                        lambda grafo, intestazione, server, recursion_limit, comandi: visto.update(
+                            testata=intestazione, limite=recursion_limit, comandi=comandi))
     assert _avvia_main_con_mcp(monkeypatch, Finta) == 0
     assert "Strumenti: ora_corrente, meteo_attuale" in visto["testata"]
     assert visto["limite"] == 16  # 2*3 passi + 2*2 revisioni + 6
     assert visto["servers"][0].nome == "meteo" and visto["chiusa"]
+    # Il server utente (prompt MCP) entra nella connessione, per ultimo; i suoi prompt vanno alla chat.
+    assert visto["servers"][-1].nome == "utente" and visto["comandi"] is not None
 
 
 def test_rispondi_azzera_passi_e_revisioni():
@@ -336,6 +341,9 @@ def test_main_applica_le_preferenze_lette_dalla_resource(monkeypatch):
             visto["servers"] = servers
             self.strumenti = []
 
+        def elenca_prompt(self, server):
+            return []
+
         def __enter__(self):
             return self
 
@@ -348,7 +356,8 @@ def test_main_applica_le_preferenze_lette_dalla_resource(monkeypatch):
 
     monkeypatch.setattr(agente.main, "costruisci_grafo", grafo_finto)
     monkeypatch.setattr(agente.main, "avvia_sessione",
-                        lambda grafo, intestazione, server, recursion_limit: visto.update(testata=intestazione))
+                        lambda grafo, intestazione, server, recursion_limit, comandi: visto.update(
+                            testata=intestazione))
     preferenze = Preferenze("inglese", "America/New_York", "dettagliato")
     assert _avvia_main_con_mcp(monkeypatch, Finta, preferenze) == 0
     assert visto["fuso_predefinito"] == "America/New_York"
@@ -366,3 +375,52 @@ def test_server_utente_stdio_e_http():
     assert server.env["PREFERENZE_FILE"] == "dati/pref.json" and server.env["MCP_TRASPORTO"] == "stdio"
     http = server_utente(_config(TRASPORTO_MCP="http", MCP_HTTP_HOST="server-mcp"))
     assert http.url == "http://server-mcp:8108/mcp"
+
+
+class ComandiFinti:
+    """Come ComandiPrompt: /prompt valido → un HumanMessage; con «errore» → ErroreComando."""
+
+    disponibili = True
+
+    def elenco(self):
+        return "Prompt del server utente:\n- spiega: Spiega un argomento."
+
+    def richiama(self, riga):
+        from agente.comandi import ErroreComando
+        if "errore" in riga:
+            raise ErroreComando("Argomento obbligatorio mancante: argomento.")
+        return [HumanMessage("Spiegami «MCP» a livello base")]
+
+
+def _sessione_con_comandi(grafo, ingressi, comandi=None):
+    righe: list[str] = []
+    coda = iter(ingressi + ["esci"])
+    avvia_sessione(grafo, intestazione="Modello: m", server=SERVER, recursion_limit=16,
+                   leggi=lambda _p: next(coda), scrivi=righe.append, comandi=comandi)
+    return "\n".join(righe)
+
+
+def test_comando_prompts_elenca_senza_chiamare_il_grafo():
+    grafo = GrafoFinto(None)
+    uscita = _sessione_con_comandi(grafo, ["/prompts"], ComandiFinti())
+    assert "spiega: Spiega un argomento." in uscita and grafo.ricevuti == []
+
+
+def test_comando_prompt_manda_i_messaggi_del_server_al_grafo():
+    grafo = GrafoFinto(None)
+    uscita = _sessione_con_comandi(grafo, ["/prompt spiega argomento=MCP"], ComandiFinti())
+    assert [m.content for m in grafo.ricevuti[0]] == ["Spiegami «MCP» a livello base"]
+    assert "Assistente> ok" in uscita
+
+
+def test_comando_prompt_non_valido_non_chiama_il_grafo():
+    grafo = GrafoFinto(None)
+    uscita = _sessione_con_comandi(grafo, ["/prompt spiega errore"], ComandiFinti())
+    assert grafo.ricevuti == [] and "[errore] Argomento obbligatorio mancante" in uscita
+
+
+def test_comando_sconosciuto_o_senza_prompt_non_va_al_modello():
+    grafo = GrafoFinto(None)
+    uscita = _sessione_con_comandi(grafo, ["/aiuto", "/prompts"])
+    assert grafo.ricevuti == []
+    assert "Comando sconosciuto: /aiuto" in uscita and "Prompt non disponibili" in uscita

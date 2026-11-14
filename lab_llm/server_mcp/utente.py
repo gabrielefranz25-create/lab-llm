@@ -1,4 +1,4 @@
-"""Server MCP «Utente»: espone le preferenze dell'utente come resource `utente://preferenze`.
+"""Server MCP «Utente»: le preferenze dell'utente come resource `utente://preferenze` e due prompt.
 
 Una resource non è un tool: non la sceglie il modello. La legge l'host (l'agente) a inizio sessione
 per preparare il prompt di sistema. Il file viene riletto a ogni richiesta: cambiandolo, la sessione
@@ -19,6 +19,16 @@ logger = logging.getLogger(__name__)
 URI_PREFERENZE = "utente://preferenze"
 PREFERENZE_PREDEFINITE = Path(__file__).resolve().parent / "risorse" / "preferenze.json"
 
+LIVELLI = {
+    "base": "usa parole semplici e un esempio della vita quotidiana, senza termini tecnici.",
+    "intermedio": "dai una definizione precisa, come funziona e un esempio pratico.",
+    "avanzato": "entra nei dettagli tecnici, nei componenti e nei limiti, con la terminologia corretta.",
+}
+STILI_RIASSUNTO = {
+    "sintetico": "Usa al massimo tre frasi.",
+    "dettagliato": "Fai un elenco puntato, un punto per ogni domanda, con la risposta data.",
+}
+
 
 def crea_server(percorso: Path = PREFERENZE_PREDEFINITE) -> FastMCP:
     """Server con la sola resource delle preferenze (nessun tool)."""
@@ -31,6 +41,33 @@ def crea_server(percorso: Path = PREFERENZE_PREDEFINITE) -> FastMCP:
         testo = Path(percorso).read_text(encoding="utf-8")
         logger.info("resource %s letta da %s", URI_PREFERENZE, percorso)
         return testo
+
+    # Prompt (lezione 6, step 5): modelli di istruzioni richiamati dall'utente con /prompt nella CLI.
+    @server.prompt
+    def spiega(argomento: str, livello: str = "base") -> str:
+        """Spiega un argomento al livello richiesto.
+
+        Args:
+            argomento: concetto da spiegare
+            livello: base, intermedio o avanzato
+        """
+        if livello not in LIVELLI:
+            raise ValueError(f"livello '{livello}' non valido: usa {', '.join(LIVELLI)}")
+        logger.info("prompt spiega: argomento=%s livello=%s", argomento, livello)
+        return f"Spiegami «{argomento}» a livello {livello}: {LIVELLI[livello]}"
+
+    @server.prompt
+    def riassumi_conversazione(stile: str = "sintetico") -> str:
+        """Riassume i turni della conversazione corrente.
+
+        Args:
+            stile: sintetico o dettagliato
+        """
+        if stile not in STILI_RIASSUNTO:
+            raise ValueError(f"stile '{stile}' non valido: usa {', '.join(STILI_RIASSUNTO)}")
+        logger.info("prompt riassumi_conversazione: stile=%s", stile)
+        return ("Riassumi la nostra conversazione fino a questo momento: le domande che ti ho fatto e le "
+                f"risposte che mi hai dato. {STILI_RIASSUNTO[stile]} Non usare strumenti.")
 
     return server
 

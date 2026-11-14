@@ -4,7 +4,7 @@ Spiegazione del grafo LangGraph dell'agente e degli strumenti che usa.
 **Da aggiornare a ogni modifica del grafo, dello stato o degli strumenti.**
 Per i dettagli di funzionamento vedi anche `COME_FUNZIONA.md`.
 
-Stato al 2026-11-14: lezione 5 completa; lezione 6 step 1–4 (router, revisore, riassunto, resource) fatti.
+Stato al 2026-11-14: lezione 5 completa; lezione 6 step 1–5 (router, revisore, riassunto, resource, prompt) fatti.
 
 ## 1. Il grafo di oggi
 
@@ -122,7 +122,7 @@ l'agente si collega a `http://<MCP_HTTP_HOST>:<porta>/mcp`. Catalogo e invocazio
 |---|---|---|---|
 | Tool | il modello | durante il ciclo, quando serve un'azione o un dato | fatto (lezione 5) |
 | Resource | l'applicazione (host) | prima di chiamare il modello, per preparare il contesto | fatto (lezione 6, step 4): `utente://preferenze` |
-| Prompt | l'utente | quando sceglie esplicitamente un compito (`/prompt`) | da fare (lezione 6, step 5) |
+| Prompt | l'utente | quando sceglie esplicitamente un compito (`/prompt`) | fatto (lezione 6, step 5): `spiega`, `riassumi_conversazione` |
 
 Errore comune: esporre tutto come tool. Così le decisioni che spettano all'applicazione o all'utente passano al modello.
 
@@ -135,6 +135,18 @@ Errore comune: esporre tutto come tool. Così le decisioni che spettano all'appl
   e stile completano la prima riga del prompt di sistema (`Sei l'assistente del laboratorio. Rispondi sempre in …`).
 - Campo non valido → valore predefinito per quel campo; resource non disponibile → tutti i predefiniti.
   Entrambi i casi con un WARNING.
+
+### I prompt MCP (step 5)
+- Server `utente`: `spiega(argomento, livello="base")` (base, intermedio, avanzato) e
+  `riassumi_conversazione(stile="sintetico")` (sintetico, dettagliato). Descrizioni degli argomenti dalla
+  docstring (sezione `Args:`), lette da FastMCP.
+- Host: `agente/comandi.py` (`ComandiPrompt`) legge `prompts/list` una volta all'avvio della chat e
+  gestisce `/prompts` e `/prompt nome arg=valore`; gli argomenti si controllano nell'host. Il server
+  `utente` è anche nella connessione dei tool (senza tool, quindi nulla cambia per `bind_tools`).
+- I messaggi del prompt entrano nella cronologia al posto della domanda e il grafo non sa che vengono
+  da un prompt: router, strumenti e revisore lavorano come sempre. L'ambito predefinito del router
+  comprende «spiegazioni di concetti di informatica e di intelligenza artificiale, riassunti della
+  conversazione».
 
 ## 4. Il grafo che vogliamo (lezione 6)
 

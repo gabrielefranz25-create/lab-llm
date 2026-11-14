@@ -160,3 +160,21 @@ def test_leggi_risorsa_da_server_non_disponibile():
             assert "rotto" in str(errore)
         else:
             raise AssertionError("attesa un'eccezione")
+
+
+def test_elenca_e_ottieni_prompt():
+    with ConnessioneMCP([UTENTE], TIMEOUT) as connessione:
+        elenco = {p.name: p for p in connessione.elenca_prompt("utente")}
+        assert set(elenco) == {"spiega", "riassumi_conversazione"}
+        messaggi = connessione.ottieni_prompt("utente", "spiega", {"argomento": "MCP", "livello": "base"})
+    assert messaggi == [("user", messaggi[0][1])] and "«MCP» a livello base" in messaggi[0][1]
+
+
+def test_ottieni_prompt_con_errore_del_server():
+    with ConnessioneMCP([UTENTE], TIMEOUT) as connessione:
+        try:
+            connessione.ottieni_prompt("utente", "spiega", {"argomento": "MCP", "livello": "esperto"})
+        except Exception as errore:
+            assert "utente" in str(errore)
+        else:
+            raise AssertionError("attesa un'eccezione")

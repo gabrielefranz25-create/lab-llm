@@ -205,3 +205,8 @@ def test_max_revisioni_non_valido(valore):
 def test_file_delle_preferenze():
     assert carica_config(MINIMO).preferenze_file == "server_mcp/risorse/preferenze.json"
     assert carica_config({**MINIMO, "PREFERENZE_FILE": "dati/pref.json"}).preferenze_file == "dati/pref.json"
+
+
+def test_ambito_predefinito_comprende_i_prompt_mcp():
+    # Step 5: /prompt spiega e /prompt riassumi_conversazione passano dal router come le domande.
+    assert "spiegazioni di concetti" in AMBITO_PREDEFINITO and "riassunti della conversazione" in AMBITO_PREDEFINITO
