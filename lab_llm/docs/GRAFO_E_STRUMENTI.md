@@ -4,7 +4,7 @@ Spiegazione del grafo LangGraph dell'agente e degli strumenti che usa.
 **Da aggiornare a ogni modifica del grafo, dello stato o degli strumenti.**
 Per i dettagli di funzionamento vedi anche `COME_FUNZIONA.md`.
 
-Stato al 2026-11-14: lezione 5 completa; lezione 6 step 1 (router), 2 (revisore) e 3 (riassunto) fatti.
+Stato al 2026-11-14: lezione 5 completa; lezione 6 step 1–4 (router, revisore, riassunto, resource) fatti.
 
 ## 1. Il grafo di oggi
 
@@ -121,10 +121,20 @@ l'agente si collega a `http://<MCP_HTTP_HOST>:<porta>/mcp`. Catalogo e invocazio
 | Primitiva | Chi la attiva | Quando | Stato nel progetto |
 |---|---|---|---|
 | Tool | il modello | durante il ciclo, quando serve un'azione o un dato | fatto (lezione 5) |
-| Resource | l'applicazione (host) | prima di chiamare il modello, per preparare il contesto | da fare (lezione 6, step 4) |
+| Resource | l'applicazione (host) | prima di chiamare il modello, per preparare il contesto | fatto (lezione 6, step 4): `utente://preferenze` |
 | Prompt | l'utente | quando sceglie esplicitamente un compito (`/prompt`) | da fare (lezione 6, step 5) |
 
 Errore comune: esporre tutto come tool. Così le decisioni che spettano all'applicazione o all'utente passano al modello.
+
+### La resource `utente://preferenze` (step 4)
+- Server `server_mcp/utente.py`: nessun tool, una resource (`application/json`) con il contenuto di
+  `PREFERENZE_FILE` (default `server_mcp/risorse/preferenze.json`), riletto a ogni richiesta.
+- Host: `main.py` chiama `leggi_preferenze` (`agente/preferenze.py`) **prima** di aprire la connessione dei
+  tool, con una connessione dedicata al solo server `utente` (`resources/read` una volta, poi chiusa).
+- Il fuso delle preferenze diventa il fuso predefinito della sessione (orologio, `scadenze`, prompt); lingua
+  e stile completano la prima riga del prompt di sistema (`Sei l'assistente del laboratorio. Rispondi sempre in …`).
+- Campo non valido → valore predefinito per quel campo; resource non disponibile → tutti i predefiniti.
+  Entrambi i casi con un WARNING.
 
 ## 4. Il grafo che vogliamo (lezione 6)
 

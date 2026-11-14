@@ -27,11 +27,13 @@ sessione successiva si comporta diversamente senza toccare il codice.
   stile=…` (diverso dalle righe `strumento=…` dei tool).
 - **Effetti**: il fuso delle preferenze diventa il fuso predefinito della sessione
   (`replace(config, fuso_orario_predefinito=…)` prima di creare strumenti, server e grafo: orologio nelle
-  tre varianti, `scadenze`, prompt). Lingua e stile diventano la prima riga del prompt di sistema:
-  `Preferenze dell'utente: rispondi sempre in <lingua>, <stile>.` (il fuso arriva al prompt come fuso
-  predefinito). Una prima versione con l'URI della resource, «(stile …)» e il fuso nella riga faceva
-  inventare l'ora a gemma-4-e2b (0 chiamate a `ora_corrente` su 3; 3 su 3 con la riga asciutta).
-  La riga «Rispondi in italiano, in modo breve e chiaro» e «(ora italiana)» escono da `PROMPT_SISTEMA`.
+  tre varianti, `scadenze`, prompt). Lingua e stile completano la prima riga del prompt di sistema:
+  `Sei l'assistente del laboratorio. Rispondi sempre in <lingua>, <stile>.` (il fuso arriva al prompt come
+  fuso predefinito). Sonde reali del 2026-11-14 (3 tentativi per variante): con l'URI della resource, lo stile tra
+  parentesi e il fuso nella riga gemma-4-e2b inventava l'ora (0 chiamate a `ora_corrente` su 3); con
+  l'etichetta «Preferenze dell'utente:» o con le preferenze prima di «Sei l'assistente del
+  laboratorio.» non chiamava `calcola` per «15 per 12» (0 su 3), e lo stesso togliendo «(ora
+  italiana)». Con la forma attuale 3 su 3. «(ora italiana)» resta solo con `Europe/Rome`.
 - La resource **non** è un tool: il server `utente` non ha voci in `list_tools()` e nulla passa a
   `bind_tools`. La connessione per le preferenze è separata da quella dei tool (si chiude subito):
   serve leggere il fuso prima di avviare gli altri server.
