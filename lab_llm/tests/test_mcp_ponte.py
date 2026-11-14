@@ -128,3 +128,35 @@ def test_server_http_spento(caplog):
     with caplog.at_level(logging.WARNING), ConnessioneMCP([spento], timeout=10) as connessione:
         assert connessione.strumenti == []
     assert "server MCP calcolatrice non disponibile" in caplog.text
+
+
+UTENTE = ServerMCP("utente", ("-m", "server_mcp.utente"))
+
+
+def test_leggi_risorsa_dal_server(tmp_path):
+    preferenze = tmp_path / "preferenze.json"
+    preferenze.write_text('{"lingua": "inglese"}', encoding="utf-8")
+    server = ServerMCP("utente", ("-m", "server_mcp.utente"), {"PREFERENZE_FILE": str(preferenze)})
+    with ConnessioneMCP([server], TIMEOUT) as connessione:
+        assert connessione.strumenti == []
+        assert connessione.leggi_risorsa("utente", "utente://preferenze") == '{"lingua": "inglese"}'
+
+
+def test_leggi_risorsa_sconosciuta_solleva_errore():
+    with ConnessioneMCP([UTENTE], TIMEOUT) as connessione:
+        try:
+            connessione.leggi_risorsa("utente", "utente://inesistente")
+        except Exception as errore:
+            assert "utente://inesistente" in str(errore)
+        else:
+            raise AssertionError("attesa un'eccezione")
+
+
+def test_leggi_risorsa_da_server_non_disponibile():
+    with ConnessioneMCP([ROTTO], TIMEOUT) as connessione:
+        try:
+            connessione.leggi_risorsa("rotto", "utente://preferenze")
+        except Exception as errore:
+            assert "rotto" in str(errore)
+        else:
+            raise AssertionError("attesa un'eccezione")
