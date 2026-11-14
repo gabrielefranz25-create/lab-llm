@@ -22,7 +22,12 @@ nessuna chiamata al modello sotto la soglia.
   soglia DEBUG `riassunto: <n> messaggi, sotto la soglia di <s>, nessuna chiamata al modello`.
 - **Nodo `llm`**: se `riassunto` non è vuoto lo aggiunge al prompt di sistema (un solo `SystemMessage` in
   testa, come prima) con l'intestazione `INTESTAZIONE_RIASSUNTO`.
-- **Router e revisore**: invariati (il router legge gli ultimi 4 messaggi; non serve il riassunto).
+- **Router**: oltre agli ultimi 4 messaggi riceve il riassunto, se c'è, e il prompt dice che le domande
+  su ciò che l'utente ha detto prima (per esempio il nome) rientrano nell'ambito. Aggiunto dopo la prova a
+  mano: senza, «Come mi chiamo e dove vivo?» dopo la compressione era rifiutata come fuori ambito.
+- **Revisore**: invariato nel cablaggio. La stessa prova a mano ha mostrato che rileggeva «7 per 8» come
+  divisione e faceva cambiare all'agente una risposta giusta: corretto il prompt con un esempio
+  (`fix(grafo)`, sonda di 8 casi 8 su 8).
 - **Client**: tiene `cronologia` e `riassunto` della sessione; li passa al grafo a ogni turno e salva
   quelli restituiti. `rispondi(grafo, cronologia, testo, recursion_limit, riassunto="")` restituisce
   `(messaggi, riassunto, testo_risposta)`. Così, allo step 6, cronologia e riassunto potranno arrivare
@@ -46,4 +51,4 @@ nessuna chiamata al modello sotto la soglia.
   risposta con il nome; stato con `riassunto` non vuoto e log `riassunto: messaggi prima=… dopo=…`.
 
 ## 5. Non obiettivi
-Stima dei token (resta la soglia in messaggi), riassunto visibile al router, persistenza del riassunto.
+Stima dei token (resta la soglia in messaggi), persistenza del riassunto.

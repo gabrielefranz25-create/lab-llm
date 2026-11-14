@@ -116,3 +116,14 @@ def test_senza_router_si_va_sempre_all_agente():
     stato = _esegui(_grafo(modello, None), "Ricetta della carbonara?")
     assert len(modello.chiamate) == 1
     assert stato["categoria"] == "conversazione"
+
+
+def test_router_riceve_il_riassunto_della_conversazione():
+    router = RouterFinto("conversazione")
+    _grafo(ModelloFinto(), router).invoke(
+        {"messages": [HumanMessage("Come mi chiamo?")], "passi_strumento": 0,
+         "riassunto": "L'utente si chiama Gabriele."})
+    sistema, utente = router.chiamate[0]
+    assert "L'utente si chiama Gabriele." in utente.content
+    assert "Domanda da classificare: Come mi chiamo?" in utente.content
+    assert "ciò che l'utente ha detto" in sistema.content

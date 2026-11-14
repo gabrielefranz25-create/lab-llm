@@ -59,7 +59,9 @@ PROMPT_ROUTER = (
     "ultima domanda rientra nell'ambito dell'assistente.\n"
     "Ambito: {ambito}.\n"
     "Rispondi con la categoria \"conversazione\" se la domanda rientra nell'ambito (anche come seguito "
-    "della conversazione recente), altrimenti con \"fuori_ambito\". Aggiungi un motivo breve, in italiano."
+    "della conversazione recente), altrimenti con \"fuori_ambito\". Rientrano nell'ambito anche le "
+    "domande su ciò che l'utente ha detto prima nella conversazione (per esempio il suo nome). "
+    "Aggiungi un motivo breve, in italiano."
 )
 
 MESSAGGIO_RIFIUTO = "Mi dispiace, posso aiutarti solo con: {ambito}."
@@ -274,6 +276,8 @@ def costruisci_grafo(modello: Runnable, strumenti: list[BaseTool], *, max_passi:
         testo = f"Domanda da classificare: {domanda.content}"
         if precedenti:
             testo = f"Conversazione recente:\n{trascrivi(precedenti)}\n\n{testo}"
+        if stato.get("riassunto"):  # dopo la compressione i fatti vecchi stanno solo qui
+            testo = f"Riassunto della conversazione precedente: {stato['riassunto']}\n\n{testo}"
         # print("[passo] nodo router: chiedo al modello se la domanda rientra nell'ambito")
         try:
             decisione = router.invoke([SystemMessage(prompt_router), HumanMessage(testo)])
