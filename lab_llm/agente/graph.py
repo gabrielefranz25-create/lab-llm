@@ -19,11 +19,15 @@ from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
+# Lingua e stile: dalle preferenze dell'utente (resource utente://preferenze, lezione 6 step 4), messe in
+# cima al prompt dal chiamante; senza preferenze si usano queste.
+ISTRUZIONI_PREDEFINITE = "Rispondi in italiano, in modo breve e chiaro."
+
 PROMPT_SISTEMA = (
-    "Sei l'assistente del laboratorio. Rispondi in italiano, in modo breve e chiaro.\n"
+    "Sei l'assistente del laboratorio.\n"
     "Per qualsiasi domanda su data, ora o giorno attuali usa SEMPRE lo strumento `ora_corrente`: "
-    "non inventare l'ora. Se l'utente non indica un luogo usa il fuso predefinito {fuso} "
-    "(ora italiana). Per altri luoghi passa il nome IANA del fuso (es. \"Asia/Tokyo\").\n"
+    "non inventare l'ora. Se l'utente non indica un luogo usa il fuso predefinito {fuso}. "
+    "Per altri luoghi passa il nome IANA del fuso (es. \"Asia/Tokyo\").\n"
     "Nella risposta indica sempre a quale fuso orario si riferisce l'ora.\n"
     "Per il meteo di adesso usa lo strumento `meteo_attuale` e per le previsioni "
     "`previsioni_meteo`: non inventare dati meteorologici e cita la località indicata nel risultato.\n"
@@ -224,7 +228,8 @@ def costruisci_grafo(modello: Runnable, strumenti: list[BaseTool], *, max_passi:
                      riassuntore: Runnable | None = None,
                      messaggi_da_tenere: int = 6, router: Runnable | None = None,
                      ambito: str = "", revisore: Runnable | None = None,
-                     max_revisioni: int = 2) -> CompiledStateGraph:
+                     max_revisioni: int = 2,
+                     preferenze: str = ISTRUZIONI_PREDEFINITE) -> CompiledStateGraph:
     """Grafo compatta -> router -> (llm -> strumenti -> llm -> revisore | rifiuto), con il nodo limite.
 
     Il modello ha già gli strumenti collegati; riassuntore, router e revisore no. Senza riassuntore il
@@ -232,7 +237,8 @@ def costruisci_grafo(modello: Runnable, strumenti: list[BaseTool], *, max_passi:
     ogni domanda passa all'agente; senza revisore ogni risposta è approvata. Router e revisore
     restituiscono un DecisioneRouter e un DecisioneRevisore.
     """
-    prompt = "\n".join([PROMPT_SISTEMA.format(fuso=fuso_predefinito),
+    # Le preferenze dell'utente (o le istruzioni predefinite) stanno in cima al prompt di sistema.
+    prompt = "\n".join([preferenze, PROMPT_SISTEMA.format(fuso=fuso_predefinito),
                         *(testo for nome, testo in ISTRUZIONI_PER_STRUMENTO.items()
                           if any(s.name == nome for s in strumenti))])
     prompt_router = PROMPT_ROUTER.format(ambito=ambito)
