@@ -12,6 +12,7 @@ from agente.graph import costruisci_grafo, limite_ricorsione
 from agente.llm import (ErroreModello, crea_modello, crea_revisore, crea_riassuntore, crea_router,
                         verifica_modello)
 from agente.mcp_ponte import ConnessioneMCP, ServerMCP, unisci_strumenti
+from agente.preferenze import istruzioni, leggi_preferenze, predefinite
 from agente.strumenti import crea_ora_corrente, crea_ora_corrente_http
 from server_mcp.avvio import PERCORSO_HTTP, PORTE_HTTP
 
@@ -55,6 +56,15 @@ def server_da_config(config: Config) -> list[ServerMCP]:
     return servers
 
 
+def server_utente(config: Config) -> ServerMCP:
+    """Server `utente`, che espone la resource utente://preferenze (stdio, oppure HTTP già avviato)."""
+    if config.trasporto_mcp == "http":
+        return ServerMCP("utente", (), url=f"http://{config.mcp_http_host}:{PORTE_HTTP['utente']}{PERCORSO_HTTP}")
+    return ServerMCP("utente", ("-m", "server_mcp.utente"),
+                     {"LOG_LEVEL": config.log_level, "FASTMCP_LOG_LEVEL": "WARNING", "MCP_TRASPORTO": "stdio",
+                      "PREFERENZE_FILE": config.preferenze_file})
+
+
 def strumenti_orologio(config: Config) -> list[BaseTool]:
     """Orologio della variante scelta con VARIANTE_OROLOGIO (lo stesso contratto `ora_corrente`).
 
@@ -96,6 +106,10 @@ def main() -> int:
         return 130
 
     try:
+        # Resource: la legge l'host, una volta, prima di avviare gli altri server e della prima domanda.
+        # Il suo fuso diventa il fuso predefinito della sessione (orologio, scadenze, prompt).
+        preferenze = leggi_preferenze(server_utente(config), config.mcp_timeout, predefinite(config))
+        config = replace(config, fuso_orario_predefinito=preferenze.fuso_orario)
         with ConnessioneMCP(server_da_config(config), config.mcp_timeout) as connessione:
             strumenti = unisci_strumenti(strumenti_orologio(config), connessione.strumenti)
             grafo = costruisci_grafo(
@@ -109,11 +123,13 @@ def main() -> int:
                 ambito=config.ambito,
                 revisore=crea_revisore(config),
                 max_revisioni=config.max_revisioni,
+                preferenze=istruzioni(preferenze),
             )
             avvia_sessione(
                 grafo,
                 intestazione=(f"Modello: {config.lm_model}  |  Server: {config.lm_base_url}  |  "
                               f"Fuso predefinito: {config.fuso_orario_predefinito}  |  "
+                              f"Preferenze: lingua={preferenze.lingua}, stile={preferenze.stile}  |  "
                               f"Strumenti: {', '.join(s.name for s in strumenti)}"),
                 server=config.lm_base_url,
                 recursion_limit=limite_ricorsione(config.max_passi_strumento, config.max_revisioni),
