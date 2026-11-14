@@ -59,7 +59,9 @@ PROMPT_ROUTER = (
     "ultima domanda rientra nell'ambito dell'assistente.\n"
     "Ambito: {ambito}.\n"
     "Rispondi con la categoria \"conversazione\" se la domanda rientra nell'ambito (anche come seguito "
-    "della conversazione recente), altrimenti con \"fuori_ambito\". Aggiungi un motivo breve, in italiano."
+    "della conversazione recente), altrimenti con \"fuori_ambito\". Rientrano nell'ambito anche le "
+    "domande su ciò che l'utente ha detto prima nella conversazione (per esempio il suo nome). "
+    "Aggiungi un motivo breve, in italiano."
 )
 
 MESSAGGIO_RIFIUTO = "Mi dispiace, posso aiutarti solo con: {ambito}."
@@ -72,6 +74,8 @@ PROMPT_REVISORE = (
     "NON controllare se numeri, orari, dati meteo o risultati dei calcoli sono giusti: arrivano dagli "
     "strumenti e vanno considerati corretti anche se ti sembrano sbagliati. Una risposta che spiega di "
     "non poter fare una parte, o che riporta un errore dello strumento, tratta comunque quella parte.\n"
+    "Esempio: domanda «Quanto fa 7 per 8?», risposta «7 per 8 fa 56.» → coerente=true (in italiano "
+    "«per» indica la moltiplicazione, ma anche con un numero diverso la parte sarebbe trattata).\n"
     "Scrivi prima il motivo breve, in italiano (quali parti sono trattate e quali mancano), poi "
     "coerente=true oppure coerente=false."
 )
@@ -88,8 +92,7 @@ NOTA_REVISORE = (
 # Messaggi della cronologia (domanda compresa) che il router legge per decidere.
 MESSAGGI_ROUTER = 4
 
-# Nome del SystemMessage che, in testa alla cronologia, contiene il riassunto dei messaggi vecchi.
-NOME_RIASSUNTO = "riassunto"
+# Intestazione con cui il campo `riassunto` dello stato entra nel prompt di sistema del nodo llm.
 INTESTAZIONE_RIASSUNTO = (
     "Riassunto della conversazione precedente con l'utente (fatti già detti, usali per rispondere):\n"
 )
@@ -118,6 +121,9 @@ class AgentState(TypedDict):
     categoria: str
     # Revisioni chieste dal revisore nel turno corrente (azzerate dal client a ogni domanda).
     revisioni: int
+    # Riassunto dei messaggi vecchi, scritto dal nodo compatta: il nuovo sostituisce il vecchio
+    # (che il riassuntore ha già incorporato). Non sta in `messages`.
+    riassunto: str
 
 
 def finestra_contesto(messaggi: list[AnyMessage], n: int) -> list[AnyMessage]:
@@ -136,10 +142,6 @@ def finestra_contesto(messaggi: list[AnyMessage], n: int) -> list[AnyMessage]:
     if len(finestra) < len(messaggi):
         logger.debug("contesto: inviati %d di %d messaggi", len(finestra), len(messaggi))
     return finestra
-
-
-def _e_riassunto(messaggio: AnyMessage) -> bool:
-    return isinstance(messaggio, SystemMessage) and messaggio.name == NOME_RIASSUNTO
 
 
 def _e_nota_revisore(messaggio: AnyMessage) -> bool:
@@ -169,9 +171,7 @@ def trascrivi(messaggi: list[AnyMessage]) -> str:
     """Conversazione come testo semplice, da dare al riassuntore (che non conosce gli strumenti)."""
     righe = []
     for m in messaggi:
-        if _e_riassunto(m):
-            righe.append(f"Riassunto precedente: {m.content.removeprefix(INTESTAZIONE_RIASSUNTO)}")
-        elif _e_nota_revisore(m):
+        if _e_nota_revisore(m):
             righe.append(f"Revisore: {m.content.removeprefix(INTESTAZIONE_REVISORE)}")
         elif isinstance(m, HumanMessage):
             righe.append(f"Utente: {m.content}")
@@ -240,26 +240,34 @@ def costruisci_grafo(modello: Runnable, strumenti: list[BaseTool], *, max_passi:
 
     def nodo_compatta(stato: AgentState) -> dict:
         messaggi = stato["messages"]
-        if riassuntore is None or len(messaggi) <= max_messaggi_contesto:
+        if riassuntore is None:
+            return {}
+        if len(messaggi) <= max_messaggi_contesto:
             # print(f"[passo] nodo compatta: {len(messaggi)} messaggi, nessun riassunto necessario")
+            logger.debug("riassunto: %d messaggi, sotto la soglia di %d, nessuna chiamata al modello",
+                         len(messaggi), max_messaggi_contesto)
             return {}
         vecchi, recenti = dividi_cronologia(messaggi, messaggi_da_tenere)
-        if not vecchi or (len(vecchi) == 1 and _e_riassunto(vecchi[0])):
+        if not vecchi:
             return {}
+        testo = trascrivi(vecchi)
+        precedente = stato.get("riassunto", "")
+        if precedente:  # il riassunto nuovo incorpora il precedente e lo sostituisce
+            testo = f"Riassunto precedente: {precedente}\n{testo}"
         # print(f"[passo] nodo compatta: riassumo {len(vecchi)} messaggi, ne tengo {len(recenti)}")
         try:
-            risposta = riassuntore.invoke([SystemMessage(PROMPT_RIASSUNTO), HumanMessage(trascrivi(vecchi))])
+            risposta = riassuntore.invoke([SystemMessage(PROMPT_RIASSUNTO), HumanMessage(testo)])
         except openai.APIError as errore:
             logger.warning("riassunto non riuscito, cronologia lasciata intera: %s", errore)
             return {}
-        testo = risposta.content.strip() if isinstance(risposta.content, str) else ""
-        if not testo:
+        riassunto = risposta.content.strip() if isinstance(risposta.content, str) else ""
+        if not riassunto:
             logger.warning("riassunto non riuscito: il modello non ha restituito testo")
             return {}
-        logger.info("compattati %d messaggi, tenuti %d", len(vecchi), len(recenti))
-        riassunto = SystemMessage(INTESTAZIONE_RIASSUNTO + testo, name=NOME_RIASSUNTO)
-        # REMOVE_ALL_MESSAGES svuota la cronologia: add_messages poi accoda riassunto e recenti.
-        return {"messages": [RemoveMessage(id=REMOVE_ALL_MESSAGES), riassunto] + recenti}
+        logger.info("riassunto: messaggi prima=%d dopo=%d (riassunti %d, tenuti %d)",
+                    len(messaggi), len(recenti), len(vecchi), len(recenti))
+        # REMOVE_ALL_MESSAGES svuota la cronologia: add_messages poi accoda i recenti.
+        return {"messages": [RemoveMessage(id=REMOVE_ALL_MESSAGES)] + recenti, "riassunto": riassunto}
 
     def nodo_router(stato: AgentState) -> dict:
         if router is None:
@@ -268,6 +276,8 @@ def costruisci_grafo(modello: Runnable, strumenti: list[BaseTool], *, max_passi:
         testo = f"Domanda da classificare: {domanda.content}"
         if precedenti:
             testo = f"Conversazione recente:\n{trascrivi(precedenti)}\n\n{testo}"
+        if stato.get("riassunto"):  # dopo la compressione i fatti vecchi stanno solo qui
+            testo = f"Riassunto della conversazione precedente: {stato['riassunto']}\n\n{testo}"
         # print("[passo] nodo router: chiedo al modello se la domanda rientra nell'ambito")
         try:
             decisione = router.invoke([SystemMessage(prompt_router), HumanMessage(testo)])
@@ -290,10 +300,9 @@ def costruisci_grafo(modello: Runnable, strumenti: list[BaseTool], *, max_passi:
         # print("[passo] nodo llm: chiedo al modello la prossima mossa")
         messaggi = stato["messages"]
         sistema = prompt
-        if messaggi and _e_riassunto(messaggi[0]):
+        if stato.get("riassunto"):
             # Un solo messaggio di sistema in testa: alcuni modelli non ne accettano altri.
-            sistema += "\n\n" + messaggi[0].content
-            messaggi = messaggi[1:]
+            sistema += "\n\n" + INTESTAZIONE_RIASSUNTO + stato["riassunto"]
         da_inviare = [SystemMessage(sistema)] + finestra_contesto(messaggi, max_messaggi_contesto)
         # print(f"[passo] nodo llm: invio {len(da_inviare)} messaggi al modello (prompt di sistema compreso)")
         logger.info("agente: invio %d messaggi al modello", len(da_inviare))

@@ -297,3 +297,30 @@ def test_rispondi_azzera_passi_e_revisioni():
     grafo.invoke = lambda stato, config=None: stati.append(stato) or {"messages": stato["messages"] + [AIMessage("ok")]}
     rispondi(grafo, [], "ciao", recursion_limit=16)
     assert stati[0]["passi_strumento"] == 0 and stati[0]["revisioni"] == 0
+
+
+def test_rispondi_passa_e_restituisce_il_riassunto():
+    stati = []
+
+    class Grafo:
+        def invoke(self, stato, config=None):
+            stati.append(stato)
+            return {"messages": stato["messages"] + [AIMessage("ok")], "riassunto": "nuovo"}
+
+    messaggi, riassunto, risposta = rispondi(Grafo(), [], "ciao", recursion_limit=16, riassunto="vecchio")
+    assert stati[0]["riassunto"] == "vecchio"
+    assert riassunto == "nuovo" and risposta == "ok" and len(messaggi) == 2
+
+
+def test_sessione_conserva_il_riassunto_tra_i_turni():
+    stati = []
+
+    class Grafo:
+        def invoke(self, stato, config=None):
+            stati.append(stato)
+            return {"messages": stato["messages"][-1:] + [AIMessage("ok")],
+                    "riassunto": f"riassunto {len(stati)}"}
+
+    _sessione(Grafo(), ["uno", "due", "esci"])
+    assert stati[0]["riassunto"] == "" and stati[1]["riassunto"] == "riassunto 1"
+    assert [m.content for m in stati[1]["messages"]] == ["uno", "ok", "due"]

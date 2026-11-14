@@ -4,13 +4,14 @@ Leggono .env dalla cartella lab_llm/ e richiedono LM Studio avviato con il model
 Una risposta simulata non dimostra che il modello sappia usare lo strumento: queste sì.
 """
 
+import logging
 import os
 
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 
 from agente.config import carica_config
-from agente.graph import NOME_RIASSUNTO, costruisci_grafo, limite_ricorsione
+from agente.graph import costruisci_grafo, limite_ricorsione
 from agente.llm import crea_modello, crea_riassuntore, verifica_modello
 from agente.strumenti import crea_ora_corrente
 
@@ -71,8 +72,8 @@ def test_ora_senza_luogo_usa_predefinito(chiedi):
     assert any(a == {} or a.get("fuso_orario") == "Europe/Rome" for a in chiamate), messaggi
 
 
-def test_compattazione_conserva_il_nome(config):
-    """Soglia bassa: il nome detto al primo turno sopravvive solo grazie al riassunto."""
+def test_compattazione_conserva_il_nome(config, caplog):
+    """Soglia bassa: il nome detto al primo turno sopravvive solo grazie al campo `riassunto`."""
     strumenti = [crea_ora_corrente(config.fuso_orario_predefinito)]
     grafo = costruisci_grafo(
         crea_modello(config, strumenti), strumenti,
@@ -80,13 +81,18 @@ def test_compattazione_conserva_il_nome(config):
         fuso_predefinito=config.fuso_orario_predefinito,
         riassuntore=crea_riassuntore(config), messaggi_da_tenere=2,
     )
-    cronologia = []
+    cronologia, riassunto = [], ""
     domande = ["Ciao, mi chiamo Gabriele e studio a Udine.", "Qual è la capitale della Francia?",
                "E quella della Spagna?", "E quella del Portogallo?", "Come mi chiamo?"]
-    for testo in domande:
-        cronologia = grafo.invoke(
-            {"messages": cronologia + [HumanMessage(testo)], "passi_strumento": 0},
-            config={"recursion_limit": limite_ricorsione(config.max_passi_strumento)},
-        )["messages"]
-    assert isinstance(cronologia[0], SystemMessage) and cronologia[0].name == NOME_RIASSUNTO, cronologia
+    with caplog.at_level(logging.INFO, logger="agente.graph"):
+        for testo in domande:
+            stato = grafo.invoke(
+                {"messages": cronologia + [HumanMessage(testo)], "passi_strumento": 0,
+                 "riassunto": riassunto},
+                config={"recursion_limit": limite_ricorsione(config.max_passi_strumento)},
+            )
+            cronologia, riassunto = stato["messages"], stato["riassunto"]
+    assert "riassunto: messaggi prima=" in caplog.text
+    assert riassunto and not any(isinstance(m, SystemMessage) for m in cronologia), cronologia
+    assert all("Gabriele" not in str(m.content) for m in cronologia[:-1]), cronologia  # solo nel riassunto
     assert "Gabriele" in str(cronologia[-1].content), cronologia

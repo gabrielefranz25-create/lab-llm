@@ -195,11 +195,28 @@ Materiale: `materiali/LLM_Lez_6.pdf`. Uno step alla volta, ciascuno con spec, pi
 - Esiti: `python -m pytest` → 339 passati, 28 skipped; prove reali (`-m reale`) → 26 passate e 2 errori in
   `test_mcp_http_reale.py` (server HTTP non pronti entro 20 s durante la suite lunga); rilanciate da sole → 2 passate.
 
+#### Step 3 (14/11): riassunto come campo dello stato. Branch `feat/riassunto`
+- Prompt: «riprendi il progetto e completalo», modalità autonoma.
+- Skill e modalità: `superpowers:executing-plans` con `superpowers:test-driven-development`, modalità auto.
+- Specifica `specs/2026-11-14-riassunto-design.md` e piano `plans/2026-11-14-riassunto.md`.
+1. `docs`: specifica e piano.
+2. `feat(grafo)`: campo `riassunto` nello stato, aggiornato da `compatta`; log `riassunto: messaggi prima=… dopo=…`.
+3. `feat(client)`: il client conserva il riassunto e lo ripassa al grafo.
+4. `test(reale)`: il nome del primo turno usato dopo la compressione, solo dal campo `riassunto`.
+5. Prova a mano con soglia 6: due problemi trovati e corretti. `fix(grafo)`: il revisore leggeva «7 per 8»
+   come divisione e faceva cambiare all'agente 56 in 0.875 (esempio nel prompt; sonda 8 su 8, due volte).
+   `feat(grafo)`: il router riceve il riassunto (prima «Come mi chiamo e dove vivo?» era fuori ambito).
+   Tentata e tolta una riga sui saluti nel prompt del revisore: peggiorava la sonda (8 su 10). Limite noto:
+   su un saluto il revisore può chiedere revisioni inutili, sempre entro `MAX_REVISIONI`.
+6. `docs`: guide aggiornate.
+- Esiti: `python -m pytest` → 343 passati, 28 skipped; prova reale del riassunto → 1 passata; a mano, dopo due
+  compressioni, «Ti chiami Gabriele e vivi a Udine.».
+
 | Step | Cosa | Evidenza minima | Stato |
 |---|---|---|---|
 | 1 | Router: in ambito o fuori ambito | domanda fuori ambito rifiutata senza passare dall'agente | fatto (`feat/router`) |
 | 2 | Revisore: risposta coerente | risposta incompleta corretta entro il limite | fatto (`feat/revisore`) |
-| 3 | Riassunto della cronologia | info del primo turno usata dopo la compressione | in parte (nodo `compatta`) |
+| 3 | Riassunto della cronologia | info del primo turno usata dopo la compressione | fatto (`feat/riassunto`) |
 | 4 | Resource MCP `utente://preferenze` | preferenze applicate; si cambia il file, non il codice | da fare |
 | 5 | Prompt MCP `/prompts`, `/prompt` | comandi funzionanti con argomenti validati | da fare |
 | 6 | Agente come servizio HTTP | stessa risposta da CLI e da API | da fare |
