@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 # Porta fissa di ogni server in HTTP: l'agente la usa per comporre l'URL `http://<host>:<porta>/mcp`.
 PORTE_HTTP = {"meteo": 8101, "note": 8102, "unita": 8103, "calcolatrice": 8104,
-              "scadenze": 8105, "catalogo": 8106, "orologio": 8107}
+              "scadenze": 8105, "catalogo": 8106, "orologio": 8107, "utente": 8108}
 PERCORSO_HTTP = "/mcp"
 
 

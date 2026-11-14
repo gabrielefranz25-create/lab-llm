@@ -8,10 +8,10 @@ from server_mcp import avvia_http
 from server_mcp.avvia_http import processi_da_avviare
 
 
-def test_tutti_i_server_piu_orologio_se_server_mcp_assente():
+def test_tutti_i_server_piu_orologio_e_utente_se_server_mcp_assente():
     processi = processi_da_avviare({})
     assert [nome for nome, _, _ in processi] == [
-        "meteo", "note", "unita", "calcolatrice", "scadenze", "catalogo", "orologio"]
+        "meteo", "note", "unita", "calcolatrice", "scadenze", "catalogo", "orologio", "utente"]
     nome, comando, env = processi[0]
     assert comando == [sys.executable, "-m", "server_mcp.meteo"]
     assert env["MCP_TRASPORTO"] == "http"
@@ -20,11 +20,11 @@ def test_tutti_i_server_piu_orologio_se_server_mcp_assente():
 
 def test_server_scelti_con_server_mcp():
     processi = processi_da_avviare({"SERVER_MCP": "note, calcolatrice"})
-    assert [nome for nome, _, _ in processi] == ["note", "calcolatrice", "orologio"]
+    assert [nome for nome, _, _ in processi] == ["note", "calcolatrice", "orologio", "utente"]
 
 
-def test_server_mcp_vuota_avvia_solo_l_orologio():
-    assert [nome for nome, _, _ in processi_da_avviare({"SERVER_MCP": ""})] == ["orologio"]
+def test_server_mcp_vuota_avvia_solo_orologio_e_utente():
+    assert [nome for nome, _, _ in processi_da_avviare({"SERVER_MCP": ""})] == ["orologio", "utente"]
 
 
 def test_server_sconosciuto():
@@ -90,7 +90,7 @@ def _main_con(monkeypatch, vite, interrompi_dopo=None):
 def test_main_ctrl_c_termina_tutti_i_processi(monkeypatch):
     codice, avviati = _main_con(monkeypatch, {}, interrompi_dopo=3)
     assert codice == 0
-    assert [p.comando[-1] for p in avviati] == ["server_mcp.unita", "server_mcp.orologio"]
+    assert [p.comando[-1] for p in avviati] == ["server_mcp.unita", "server_mcp.orologio", "server_mcp.utente"]
     assert all(p.terminato for p in avviati)
 
 

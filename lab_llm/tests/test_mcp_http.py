@@ -14,7 +14,7 @@ import pytest
 
 from agente.mcp_ponte import CARTELLA_PROGETTO, ConnessioneMCP, ServerMCP
 
-SERVER = ("meteo", "note", "unita", "calcolatrice", "scadenze", "catalogo", "orologio")
+SERVER = ("meteo", "note", "unita", "calcolatrice", "scadenze", "catalogo", "orologio", "utente")
 
 
 def _porta_libera() -> int:
