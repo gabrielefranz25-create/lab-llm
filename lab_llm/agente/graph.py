@@ -66,13 +66,14 @@ MESSAGGIO_RIFIUTO = "Mi dispiace, posso aiutarti solo con: {ambito}."
 
 PROMPT_REVISORE = (
     "Sei il revisore dell'assistente del laboratorio. Non rispondi all'utente: controlli solo se la "
-    "risposta proposta è coerente con la domanda.\n"
-    "La risposta è coerente se tratta TUTTE le parti della domanda (una domanda può chiedere più cose) "
-    "e non devia dal tema. Non verificare i dati (orari, meteo, risultati dei calcoli): arrivano dagli "
-    "strumenti e sono corretti. Una risposta che spiega di non poter fare una parte, o che riporta un "
-    "errore dello strumento, è coerente.\n"
-    "Rispondi con coerente=true oppure coerente=false e un motivo breve, in italiano; se non è coerente "
-    "il motivo dice che cosa manca o che cosa è fuori tema."
+    "risposta proposta tratta tutto ciò che la domanda chiede.\n"
+    "Procedi così: elenca le parti della domanda (una domanda può chiedere più cose); per ognuna guarda "
+    "se la risposta ne parla. La risposta è coerente se parla di TUTTE le parti e non devia dal tema.\n"
+    "NON controllare se numeri, orari, dati meteo o risultati dei calcoli sono giusti: arrivano dagli "
+    "strumenti e vanno considerati corretti anche se ti sembrano sbagliati. Una risposta che spiega di "
+    "non poter fare una parte, o che riporta un errore dello strumento, tratta comunque quella parte.\n"
+    "Scrivi prima il motivo breve, in italiano (quali parti sono trattate e quali mancano), poi "
+    "coerente=true oppure coerente=false."
 )
 
 # Nome del HumanMessage con cui il revisore rimanda all'agente il motivo (un HumanMessage e non un
@@ -102,10 +103,10 @@ class DecisioneRouter(BaseModel):
 
 
 class DecisioneRevisore(BaseModel):
-    """Output strutturato del revisore."""
+    """Output strutturato del revisore. Il motivo viene prima: il modello ragiona, poi decide."""
+    motivo: str = Field(description="parti della domanda trattate e mancanti, in breve, in italiano")
     coerente: bool = Field(description="true se la risposta tratta tutte le parti della domanda senza "
                                        "deviare dal tema, altrimenti false")
-    motivo: str = Field(description="motivo breve del giudizio, in italiano")
 
 
 class AgentState(TypedDict):
