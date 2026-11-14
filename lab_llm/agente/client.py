@@ -18,12 +18,13 @@ TESTO_VUOTO = "(il modello non ha restituito testo)"
 CHIUSURA = "Sessione terminata. La cronologia non è stata salvata."
 
 
-def rispondi(grafo, cronologia: list[AnyMessage], testo: str,
-             recursion_limit: int) -> tuple[list[AnyMessage], str]:
-    """Un turno: domanda in coda alla cronologia, grafo, nuova cronologia e testo della risposta."""
+def rispondi(grafo, cronologia: list[AnyMessage], testo: str, recursion_limit: int,
+             riassunto: str = "") -> tuple[list[AnyMessage], str, str]:
+    """Un turno: domanda in coda alla cronologia, grafo; nuova cronologia, nuovo riassunto e risposta."""
     # print(f"[passo] client: invio la domanda con {len(cronologia)} messaggi di cronologia")
     risultato = grafo.invoke(
-        {"messages": cronologia + [HumanMessage(testo)], "passi_strumento": 0, "revisioni": 0},
+        {"messages": cronologia + [HumanMessage(testo)], "passi_strumento": 0, "revisioni": 0,
+         "riassunto": riassunto},
         config={"recursion_limit": recursion_limit},
     )
     messaggi = risultato["messages"]
@@ -31,7 +32,7 @@ def rispondi(grafo, cronologia: list[AnyMessage], testo: str,
     if not isinstance(risposta, str):  # alcuni modelli restituiscono una lista di parti
         risposta = "".join(p.get("text", "") if isinstance(p, dict) else str(p) for p in risposta)
     # print(f"[passo] client: turno concluso, la cronologia ora ha {len(messaggi)} messaggi")
-    return messaggi, risposta.strip() or TESTO_VUOTO
+    return messaggi, risultato.get("riassunto", riassunto), risposta.strip() or TESTO_VUOTO
 
 
 def avvia_sessione(grafo, *, intestazione: str, server: str, recursion_limit: int,
@@ -42,6 +43,7 @@ def avvia_sessione(grafo, *, intestazione: str, server: str, recursion_limit: in
     scrivi(intestazione)
     scrivi("Scrivi una domanda e premi Invio. Per uscire: esci (oppure Ctrl+C).")
     cronologia: list[AnyMessage] = []
+    riassunto = ""  # riassunto dei messaggi vecchi, aggiornato dal nodo compatta
     while True:
         try:
             # lstrip del BOM: PowerShell 5.1 lo antepone all'input passato via pipe.
@@ -53,7 +55,7 @@ def avvia_sessione(grafo, *, intestazione: str, server: str, recursion_limit: in
         if testo.lower() in COMANDI_USCITA:
             break
         try:
-            cronologia, risposta = rispondi(grafo, cronologia, testo, recursion_limit)
+            cronologia, riassunto, risposta = rispondi(grafo, cronologia, testo, recursion_limit, riassunto)
         except KeyboardInterrupt:  # Ctrl+C mentre si aspetta il modello: si esce senza traceback
             break
         except openai.APIError as errore:
