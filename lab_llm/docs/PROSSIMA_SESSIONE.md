@@ -39,6 +39,11 @@
 - Step 2 avviato sul branch `feat/revisore` (da `dev`): specifica scritta
   (`docs/superpowers/specs/2026-11-13-revisore-design.md`); mancano piano e implementazione.
 
+## Stato al 2026-11-14 (step 2 fatto)
+- Step 2 (revisore) su `feat/revisore`, unito in `dev`: nodo `revisore` dopo l'agente, `MAX_REVISIONI`
+  (default 2), nota del revisore nella cronologia. Prove reali in `tests/reale/test_revisore_reale.py`.
+- Prossimo: step 3 (riassunto come campo dello stato), poi 4–9.
+
 ## Prompt da incollare (ripartenza)
 ```
 Leggi il CLAUDE.md e docs/PROSSIMA_SESSIONE.md e controlla lo stato della repository.

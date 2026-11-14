@@ -29,6 +29,10 @@ nell'ambito dichiarato in `AMBITO_AGENTE`. Le domande fuori ambito ricevono un r
 l'agente non viene eseguito. Nel log compaiono `router: categoria=… motivo=… -> agente|rifiuto` e,
 solo se l'agente viene eseguito, `agente: invio N messaggi al modello`.
 
+Dallo step 2 un nodo **revisore** controlla, dopo l'agente, che la risposta tratti tutte le parti della
+domanda. Se non è coerente il motivo torna all'agente come nota nella cronologia, al massimo
+`MAX_REVISIONI` volte. Nel log compare `revisore: coerente=si|no motivo=… -> fine|agente (revisione k di N)`.
+
 Come funziona dentro (grafo, stato, nodi, strumenti, ponte MCP, log): [docs/COME_FUNZIONA.md](docs/COME_FUNZIONA.md).
 Docker su Windows e risoluzione dei problemi: [docs/GUIDA_DOCKER.md](docs/GUIDA_DOCKER.md).
 
@@ -81,6 +85,7 @@ Invoke-RestMethod http://localhost:1234/v1/models | Select-Object -ExpandPropert
 | `NOTE_DB` | no | `dati/note.sqlite3` | file SQLite delle note; in Docker sta nel volume `note` (vedi sotto); un percorso relativo parte dalla cartella `lab_llm/` (directory di lavoro dei server, `CARTELLA_PROGETTO` in `agente/mcp_ponte.py`), non da quella della shell |
 | `SERVER_MCP` | no | tutti (`meteo,note,unita,calcolatrice,scadenze,catalogo`) | server MCP da avviare, separati da virgole; se la variabile è presente ma vuota non parte nessun server; un nome sconosciuto dà un errore di configurazione |
 | `AMBITO_AGENTE` | no | ora e saluti + una frase per ogni server attivo | ambito dell'agente in linguaggio naturale, letto dal router; se manca si compone con `ambito_predefinito` in `agente/config.py` (`AMBITO_PER_SERVER`), così togliendo un server da `SERVER_MCP` il router smette di accettarne le domande; compare anche nel messaggio di rifiuto |
+| `MAX_REVISIONI` | no | `2` | revisioni per domanda chieste dal revisore, intero ≥ 0; con `0` il revisore giudica e scrive nel log ma non rimanda mai la risposta all'agente |
 | `PROVA_REALE` | no | — | solo per i test con LM Studio vero (vedi sotto) |
 
 `.env` resta fuori da Git; `.env.example` non contiene credenziali (LM Studio non usa chiavi).
@@ -197,6 +202,20 @@ Remove-Item Env:PROVA_REALE
 ```
 
 Esito del 2026-11-09: `2 passed` in circa un minuto e mezzo.
+
+Prove reali del revisore: il revisore vero giudica una risposta parziale e una completa scritte a mano a
+«Che ore sono a Tokyo e quanto fa 15 per 12?»; poi il grafo vero risponde alla stessa domanda e, in una
+quarta prova, parte da una bozza parziale scritta a mano che il revisore rimanda all'agente:
+
+```powershell
+$env:PROVA_REALE="1"; python -m pytest tests/reale/test_revisore_reale.py -v -o log_cli=true --log-cli-level=INFO
+Remove-Item Env:PROVA_REALE
+```
+
+Esito del 2026-11-14: `4 passed` in circa 3 minuti e mezzo. Nella quarta prova il log mostra
+`revisore: coerente=no motivo=La risposta tratta solo la prima parte della domanda (l'ora a Tokyo) e
+ignora completamente la seconda parte … -> agente (revisione 1 di 2)`, poi `ora_corrente` e
+`calcola("15*12")`, poi `revisore: coerente=si`.
 
 Prove reali dei server delle proposte: una domanda per server (calcolo, conversione, giorni lavorativi,
 ricerca e poi dettaglio di un corso), un errore controllato per server con chiamata diretta e una

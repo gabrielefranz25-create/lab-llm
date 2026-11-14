@@ -4,7 +4,7 @@ Spiegazione del grafo LangGraph dell'agente e degli strumenti che usa.
 **Da aggiornare a ogni modifica del grafo, dello stato o degli strumenti.**
 Per i dettagli di funzionamento vedi anche `COME_FUNZIONA.md`.
 
-Stato al 2026-11-11: lezione 6 step 1 (router) in `dev`; server delle proposte della lezione 5 sul branch `feat/strumenti-proposte`.
+Stato al 2026-11-14: lezione 5 completa; lezione 6 step 1 (router) e step 2 (revisore) fatti.
 
 ## 1. Il grafo di oggi
 
@@ -24,9 +24,13 @@ router ── decide se la domanda rientra nell'ambito (AMBITO_AGENTE)
   ▼ conversazione
  llm  ◄──────────────┐   il modello (con gli strumenti collegati) decide: risposta o tool_call
   │                  │
-  ├─ nessuna tool_call ───────────────► END
   ├─ tool_call, passi < limite ─► strumenti ─┘   esegue le tool_call, poi torna a llm
-  └─ tool_call, limite raggiunto ─► limite ──► END
+  ├─ tool_call, limite raggiunto ─► limite ──► END     (messaggio fisso, non revisionato)
+  └─ nessuna tool_call
+       ▼
+revisore ── la risposta tratta tutte le parti della domanda?
+  ├─ non coerente, revisioni < MAX_REVISIONI ─► nota del revisore ─► llm
+  └─ coerente, oppure limite di revisioni ──► END
 ```
 
 ### Nodi
@@ -39,12 +43,14 @@ router ── decide se la domanda rientra nell'ambito (AMBITO_AGENTE)
 | `llm` | `nodo_llm` | Mette il prompt di sistema (con le `ISTRUZIONI_PER_STRUMENTO` dei soli strumenti collegati, più l'eventuale riassunto) in cima, prende gli ultimi messaggi con `finestra_contesto` e chiama il modello. Scrive `agente: invio N messaggi al modello`: se questa riga manca, l'agente non è stato eseguito. |
 | `strumenti` | `nodo_strumenti` | Esegue ogni tool_call dell'ultimo `AIMessage` e risponde con un `ToolMessage` per ciascuna. Gli errori diventano testo per il modello. Scrive nei log `strumento=… origine=… call_id=… esito=…`. |
 | `limite` | `nodo_limite` | Chiude le tool_call rimaste in sospeso con un `ToolMessage` «Non eseguito» e aggiunge un messaggio di scuse. |
+| `revisore` | `nodo_revisore` | Manda al **revisore** (lo stesso modello senza strumenti, output strutturato `DecisioneRevisore`: `motivo` e `coerente`) la domanda del turno (`domanda_del_turno`: l'ultimo `HumanMessage` che non è una nota del revisore) e la risposta proposta. Controlla solo che la risposta tratti tutte le parti della domanda senza deviare; non verifica i dati. Se non è coerente e `revisioni < MAX_REVISIONI` aggiunge un `HumanMessage` di nome `revisore` («Nota del revisore: … <motivo>. Rispondi di nuovo …») e incrementa `revisioni`; al limite scrive un WARNING e lascia l'ultima risposta. Log `revisore: coerente=si\|no motivo=… -> fine\|agente (revisione k di N)`. Errore o output non valido → WARNING e risposta accettata; senza revisore (`revisore=None`) approva sempre. |
 
 ### Archi
 - `START → compatta → router`: fissi.
 - Dopo `router` si passa da `instrada_dopo_router`, un **arco condizionale**: verso `llm` se la categoria è `conversazione`, verso `rifiuto` se è `fuori_ambito`.
 - `rifiuto → END`.
-- Dopo `llm` si passa da `instrada_dopo_llm`, un **arco condizionale**: verso `END` se non ci sono tool_call, verso `strumenti` se `passi_strumento < MAX_PASSI_STRUMENTO`, altrimenti verso `limite`.
+- Dopo `llm` si passa da `instrada_dopo_llm`, un **arco condizionale**: verso `revisore` se non ci sono tool_call, verso `strumenti` se `passi_strumento < MAX_PASSI_STRUMENTO`, altrimenti verso `limite`.
+- Dopo `revisore` si passa da `instrada_dopo_revisore`: verso `llm` se l'ultimo messaggio è una nota del revisore, altrimenti verso `END`.
 - `strumenti → llm`: è il ciclo dell'agente.
 - `limite → END`.
 
@@ -55,6 +61,7 @@ router ── decide se la domanda rientra nell'ambito (AMBITO_AGENTE)
 | `messages` | lista di messaggi | Reducer `add_messages`: i messaggi restituiti dai nodi si **accodano**. `RemoveMessage(REMOVE_ALL_MESSAGES)` svuota la lista: lo usa `compatta`. |
 | `passi_strumento` | `int` | Nessun reducer: il nuovo valore **sostituisce** quello vecchio. Il client lo rimette a 0 a ogni turno. |
 | `categoria` | `str` | Nessun reducer: lo scrive `router` a ogni turno (`conversazione` o `fuori_ambito`). Lo legge `instrada_dopo_router`. Il motivo resta solo nel log. |
+| `revisioni` | `int` | Nessun reducer: revisioni chieste dal revisore nel turno. Il client lo rimette a 0 a ogni domanda; il nodo lo legge con `.get(..., 0)`. I `passi_strumento` restano cumulativi nel turno, anche tra una revisione e l'altra. |
 
 ### Regola importante
 Un `AIMessage` con tool_call deve sempre essere seguito dai rispettivi `ToolMessage`. Per questo `finestra_contesto` e `dividi_cronologia` tagliano solo all'inizio di un `HumanMessage`, e `limite` risponde anche alle tool_call che non esegue.
@@ -137,5 +144,5 @@ START → riassunto → router ─ fuori ambito ─► rifiuto → END
 ```
 
 - **Router** (step 1, **fatto**): un LLM con output strutturato (categoria e motivo) decide se la domanda rientra nell'ambito dichiarato in configurazione. Non decide sugli strumenti.
-- **Revisore** (step 2): un LLM controlla che la risposta sia coerente con la domanda. Se non lo è, rimanda all'agente il motivo, con un limite di revisioni.
+- **Revisore** (step 2, **fatto**): un LLM controlla che la risposta sia coerente con la domanda. Se non lo è, rimanda all'agente il motivo (nota del revisore nella cronologia), con il limite `MAX_REVISIONI`.
 - **Riassunto** (step 3): è il nodo `compatta` di oggi. Va adattato perché il riassunto diventi un campo dello stato e perché registri nei log il numero di messaggi prima e dopo.

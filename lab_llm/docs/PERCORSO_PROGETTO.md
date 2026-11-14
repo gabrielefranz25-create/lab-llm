@@ -171,10 +171,34 @@ Materiale: `materiali/LLM_Lez_6.pdf`. Uno step alla volta, ciascuno con spec, pi
 - Esiti: `python -m pytest` → 132 passati, 12 skipped. Prove reali del router → 2 passate; suite reale completa (`-m reale`) → 12 passate. Prova a mano: «Che tempo fa a Roma?» e il seguito «e domani?» vanno all'agente; «Chi era Garibaldi?» → `fuori_ambito`, rifiuto, nessuna riga `agente: invio`.
 - Test simulati (router finto) e prove reali sono separati: i primi dimostrano il cablaggio del grafo, le seconde che gemma-4-e2b classifica davvero.
 
+#### Step 2 (13–14/11): revisore. Branch `feat/revisore`
+- Prompt: quello di ripartenza in `docs/PROSSIMA_SESSIONE.md` («Continuiamo in autonomia dal primo step non
+  fatto della lezione 6…»), poi «riprendi il progetto e completalo». Modalità autonoma («fai tutto»): spec e
+  piano scritti e committati senza attendere l'approvazione.
+- Skill e modalità: `superpowers:executing-plans` con `superpowers:test-driven-development`, modalità auto.
+- Specifica `specs/2026-11-13-revisore-design.md` e piano `plans/2026-11-14-revisore.md`.
+1. `docs`: specifica e piano.
+2. `feat(config)`: `MAX_REVISIONI` (intero ≥ 0, default 2; 0 = revisore solo osservatore).
+3. `feat(grafo)`: `DecisioneRevisore` (motivo, coerente), nodo `revisore` dopo `llm` senza tool_call, nota
+   del revisore come `HumanMessage(name="revisore")`, campo `revisioni` nello stato,
+   `instrada_dopo_revisore`, `limite_ricorsione(max_passi, max_revisioni)`.
+4. `feat(main)`: `crea_revisore` (stesso modello, `with_structured_output`), client che azzera `revisioni`.
+5. `test(reale)`: `tests/reale/test_revisore_reale.py` (4 prove). Con il primo prompt gemma-4-e2b
+   ricontrollava i conti («15 per 12» letto come divisione) e rifiutava risposte complete (4 giudizi giusti
+   su 8); con il prompt che chiede di elencare le parti e di non verificare i dati, e il motivo prima del
+   verdetto nello schema, 12 su 12.
+6. `docs`: guide aggiornate.
+- Evidenze: test simulati per risposta coerente al primo passaggio, risposta parziale corretta, limite con
+  revisore che rifiuta sempre; prova reale con bozza parziale → `revisore: coerente=no … -> agente
+  (revisione 1 di 2)`, poi `ora_corrente` e `calcola`, poi `coerente=si` e risposta con 180. A mano:
+  `python -m agente` con «Che ore sono a Tokyo e quanto fa 15 per 12?» → entrambe le parti, `coerente=si`.
+- Esiti: `python -m pytest` → 339 passati, 28 skipped; prove reali (`-m reale`) → 26 passate e 2 errori in
+  `test_mcp_http_reale.py` (server HTTP non pronti entro 20 s durante la suite lunga); rilanciate da sole → 2 passate.
+
 | Step | Cosa | Evidenza minima | Stato |
 |---|---|---|---|
 | 1 | Router: in ambito o fuori ambito | domanda fuori ambito rifiutata senza passare dall'agente | fatto (`feat/router`) |
-| 2 | Revisore: risposta coerente | risposta incompleta corretta entro il limite | da fare |
+| 2 | Revisore: risposta coerente | risposta incompleta corretta entro il limite | fatto (`feat/revisore`) |
 | 3 | Riassunto della cronologia | info del primo turno usata dopo la compressione | in parte (nodo `compatta`) |
 | 4 | Resource MCP `utente://preferenze` | preferenze applicate; si cambia il file, non il codice | da fare |
 | 5 | Prompt MCP `/prompts`, `/prompt` | comandi funzionanti con argomenti validati | da fare |
