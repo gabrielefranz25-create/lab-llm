@@ -44,7 +44,8 @@
   (default 2), nota del revisore nella cronologia. Prove reali in `tests/reale/test_revisore_reale.py`.
 - Step 3 (riassunto come campo dello stato) su `feat/riassunto`, unito in `dev`.
 - Step 4 (resource `utente://preferenze`, server `utente`) su `feat/preferenze`, unito in `dev`.
-- Prossimo: step 5 (prompt MCP `/prompts` e `/prompt`), poi 6–9.
+- Step 5 (prompt MCP, `/prompts` e `/prompt`) su `feat/prompt-mcp`, unito in `dev`.
+- Prossimo: step 6 (agente come servizio HTTP), poi 7–9.
 
 ## Prompt da incollare (ripartenza)
 ```

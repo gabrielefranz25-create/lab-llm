@@ -45,6 +45,7 @@ main.py ──► config.py        variabili d'ambiente → Config (errori chiar
    │──────► llm.py           ChatOpenAI verso LM Studio (con strumenti e riassuntore senza) + verifica
    │──────► strumenti.py     strumento ora_corrente
    │──────► preferenze.py    legge la resource utente://preferenze (una volta, all'avvio)
+   │──────► comandi.py       /prompts e /prompt: prompt MCP richiamati dall'utente
    │──────► mcp_ponte.py     avvia i server MCP e ne espone il catalogo come tool sincroni; legge le resource
    │──────► graph.py         stato, nodi, instradamento, compattazione, finestra di contesto
    └──────► client.py        ciclo della chat e cronologia
@@ -327,6 +328,7 @@ strumento assente confonde il modello.
 |---|---|---|---|
 | tool | il modello | durante il ciclo | `strumento=… origine=mcp:… esito=…` a ogni chiamata |
 | resource | l'host (`main.py`) | una volta, prima di avviare gli altri server e della prima domanda | `resource: utente://preferenze letta dal server utente: …` |
+| prompt | l'utente (`/prompt`) | solo quando lo richiama; `prompts/list` una volta all'avvio della chat | `prompt: richiamato … argomenti=… dal server utente: N messaggi` |
 
 - Il server `utente` (`server_mcp/utente.py`) non ha tool: espone solo la resource, che restituisce il
   file `PREFERENZE_FILE` (riletto a ogni richiesta). Esempio:
@@ -347,6 +349,20 @@ strumento assente confonde il modello.
   l'etichetta «Preferenze dell'utente:» o con le preferenze prima di «Sei l'assistente del
   laboratorio.» non chiamava `calcola` per «15 per 12» (0 su 3), e lo stesso togliendo «(ora
   italiana)». Con la forma attuale 3 su 3. «(ora italiana)» resta solo con `Europe/Rome`.
+
+## Prompt MCP: `/prompts` e `/prompt` (step 5)
+
+- `agente/comandi.py`, `ComandiPrompt(connessione)`: all'avvio della chat `elenca_prompt("utente")`
+  (`prompts/list`), log `prompt: catalogo del server utente [spiega, riassumi_conversazione]`.
+- Nel client le righe che iniziano con `/` non vanno mai al modello come testo: `/prompts` stampa
+  l'elenco, `/prompt …` passa da `ComandiPrompt.richiama`, ogni altro comando è «sconosciuto».
+- `richiama` divide la riga con `shlex` (virgolette per i valori con spazi) e la controlla rispetto al
+  catalogo: prompt sconosciuto, argomento sconosciuto, argomento obbligatorio mancante, token senza `=`,
+  virgolette non chiuse → `ErroreComando`, stampato come `Assistente> [errore] …`, **senza** chiamare
+  server o modello. Un errore del server (es. `livello=esperto`) diventa anch'esso `ErroreComando`.
+- Se valida: `ottieni_prompt` (`prompts/get`) restituisce i messaggi (ruolo, testo); `user` diventa
+  `HumanMessage`, `assistant` `AIMessage`; `rispondi(..., nuovi=messaggi)` li mette in coda alla
+  cronologia al posto della domanda. Log `prompt: richiamato …` e una riga `prompt: messaggio i (ruolo): …`.
 
 ## Compattazione della cronologia (nodo `compatta`)
 
@@ -398,6 +414,8 @@ stampata.
 | router non riuscito | WARNING | `router non riuscito, domanda passata all'agente: Connection error.` |
 | resource letta all'avvio | INFO | `resource: utente://preferenze letta dal server utente: lingua=italiano fuso_orario=America/New_York stile=sintetico` |
 | resource non disponibile o campo non valido | WARNING | `preferenze: resource utente://preferenze non disponibile, uso i valori predefiniti (lingua=italiano fuso_orario=Europe/Rome stile=sintetico): …` |
+| catalogo dei prompt | INFO | `prompt: catalogo del server utente [spiega, riassumi_conversazione]` |
+| prompt richiamato | INFO | `prompt: richiamato spiega argomenti={"argomento": "Model Context Protocol", "livello": "base"} dal server utente: 1 messaggi` |
 | giudizio del revisore | INFO | `revisore: coerente=no motivo=La risposta tratta solo l'ora a Tokyo e ignora il calcolo. -> agente (revisione 1 di 2)` |
 | limite di revisioni | WARNING | `revisore: limite di 2 revisioni raggiunto, restituita l'ultima risposta` |
 | revisore non riuscito | WARNING | `revisore non riuscito, risposta accettata: Connection error.` |

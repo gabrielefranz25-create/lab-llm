@@ -43,6 +43,22 @@ sceglie. Cambiando il file, la sessione successiva risponde di conseguenza, senz
 log: `resource: utente://preferenze letta dal server utente: lingua=… fuso_orario=… stile=…`; se la
 resource manca, un WARNING e i valori predefiniti (italiano, sintetico, `FUSO_ORARIO_PREDEFINITO`).
 
+Dallo step 5 lo stesso server `utente` espone due **prompt MCP**, che sceglie l'utente con due comandi
+della chat (MCP non prevede comandi standard: li definisce la CLI):
+
+```
+Tu> /prompts
+Tu> /prompt spiega argomento="Model Context Protocol" livello=base
+Tu> /prompt riassumi_conversazione stile=dettagliato
+```
+
+`/prompts` mostra nome, descrizione e argomenti (obbligatori o facoltativi) letti con `prompts/list`.
+`/prompt` controlla gli argomenti **nell'host**: prompt o argomento sconosciuto, argomento obbligatorio
+mancante o virgolette non chiuse bloccano la richiesta senza chiamare né il server né il modello. Se è
+valida, i messaggi ottenuti con `prompts/get` entrano nella cronologia e passano dal grafo come una
+domanda (router, strumenti, revisore). Nel log: `prompt: richiamato spiega argomenti={…} dal server utente:
+1 messaggi` e `prompt: messaggio 1 (user): …`.
+
 Come funziona dentro (grafo, stato, nodi, strumenti, ponte MCP, log): [docs/COME_FUNZIONA.md](docs/COME_FUNZIONA.md).
 Docker su Windows e risoluzione dei problemi: [docs/GUIDA_DOCKER.md](docs/GUIDA_DOCKER.md).
 
@@ -248,7 +264,18 @@ $env:PROVA_REALE="1"; python -m pytest tests/reale/test_preferenze_reale.py -v -
 Remove-Item Env:PROVA_REALE
 ```
 
-Esito del 2026-11-14: `2 passed` in circa un minuto. Nella quarta prova il log mostra
+Esito del 2026-11-14: `2 passed` in circa un minuto.
+
+Prove reali dei prompt MCP (step 5), con router, revisore, orologio e calcolatrice veri: `/prompts` e
+`/prompt spiega argomento="Model Context Protocol" livello=base`; `/prompt spiega livello=base` bloccato
+senza chiamare il modello; due domande e poi `/prompt riassumi_conversazione stile=dettagliato`:
+
+```powershell
+$env:PROVA_REALE="1"; python -m pytest tests/reale/test_prompt_reale.py -v -o log_cli=true --log-cli-level=INFO
+Remove-Item Env:PROVA_REALE
+```
+
+Esito del 2026-11-14: `3 passed` in circa 6 minuti; il riassunto cita l'ora di Tokyo e 180. Nella quarta prova il log mostra
 `revisore: coerente=no motivo=La risposta tratta solo la prima parte della domanda (l'ora a Tokyo) e
 ignora completamente la seconda parte … -> agente (revisione 1 di 2)`, poi `ora_corrente` e
 `calcola("15*12")`, poi `revisore: coerente=si`.

@@ -235,13 +235,30 @@ Materiale: `materiali/LLM_Lez_6.pdf`. Uno step alla volta, ciascuno con spec, pi
   file con `Europe/Rome` → `ora_corrente({"fuso_orario": "Europe/Rome"})`; cambiato in
   `America/New_York` → `ora_corrente({})` e risposta con l'ora di New York.
 
+#### Step 5 (14/11): prompt MCP come comandi della CLI. Branch `feat/prompt-mcp`
+- Prompt: «riprendi il progetto e completalo», «continua»; modalità autonoma.
+- Skill e modalità: `superpowers:executing-plans` con `superpowers:test-driven-development`, modalità auto.
+- Specifica `specs/2026-11-14-prompt-mcp-design.md` e piano `plans/2026-11-14-prompt-mcp.md`.
+1. `docs`: specifica e piano.
+2. `feat(utente)`: prompt `spiega` e `riassumi_conversazione` sul server `utente`.
+3. `feat(mcp)`: `elenca_prompt` e `ottieni_prompt` nel ponte.
+4. `feat(comandi)`: `agente/comandi.py`, controllo degli argomenti nell'host rispetto a `prompts/list`.
+5. `feat(client)`: `/prompts`, `/prompt`, comandi sconosciuti; `rispondi(..., nuovi=…)`.
+6. `feat(main)`: server `utente` nella connessione, `ComandiPrompt` alla chat, ambito con spiegazioni e riassunti.
+7. `test(reale)`: `tests/reale/test_prompt_reale.py` (3 prove, sessione completa).
+8. `docs`: guide aggiornate.
+- Esiti: `python -m pytest` → 393 passati, 33 skipped; suite reale (`-m reale`) → 33 passate su 33 in 20 minuti;
+  prove reali dei prompt → 3 passate; a mano con
+  `python -m agente`: `/prompts` con argomenti e descrizioni, `/prompt spiega` senza argomento bloccato,
+  `/aiuto` sconosciuto.
+
 | Step | Cosa | Evidenza minima | Stato |
 |---|---|---|---|
 | 1 | Router: in ambito o fuori ambito | domanda fuori ambito rifiutata senza passare dall'agente | fatto (`feat/router`) |
 | 2 | Revisore: risposta coerente | risposta incompleta corretta entro il limite | fatto (`feat/revisore`) |
 | 3 | Riassunto della cronologia | info del primo turno usata dopo la compressione | fatto (`feat/riassunto`) |
 | 4 | Resource MCP `utente://preferenze` | preferenze applicate; si cambia il file, non il codice | fatto (`feat/preferenze`) |
-| 5 | Prompt MCP `/prompts`, `/prompt` | comandi funzionanti con argomenti validati | da fare |
+| 5 | Prompt MCP `/prompts`, `/prompt` | comandi funzionanti con argomenti validati | fatto (`feat/prompt-mcp`) |
 | 6 | Agente come servizio HTTP | stessa risposta da CLI e da API | da fare |
 | 7 | Back-end + PostgreSQL | chat persistenti dopo il riavvio; OpenAPI | da fare |
 | 8 | Front-end di chat | conversazione completa dal browser, errori mostrati | da fare |

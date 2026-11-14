@@ -7,11 +7,12 @@ La cartella del progetto è `lab_llm/`. Specifica e piano sono in `lab_llm/docs/
 - `agente/`: pacchetto Python, un modulo per responsabilità:
   `config` (variabili d'ambiente), `strumenti` (orologio), `graph` (stato, nodi, instradamento),
   `llm` (LM Studio), `client` (chat da terminale), `mcp_ponte` (ponte sincrono verso i server MCP),
-  `preferenze` (resource `utente://preferenze` letta all'avvio), `main` (avvio).
+  `preferenze` (resource `utente://preferenze` letta all'avvio), `comandi` (`/prompts` e `/prompt`, prompt
+  MCP), `main` (avvio).
 - `servizio_orologio/`: logica dell'orologio condivisa (`logica`) e servizio FastAPI (`api`), usati dalle
   tre varianti scelte con `VARIANTE_OROLOGIO` (`locale`, `fastapi`, `mcp`).
 - `server_mcp/`: server MCP come processi separati (`meteo`, `note`, `unita`, `calcolatrice`, `scadenze`,
-  `catalogo`, `orologio`, `utente` con la resource delle preferenze); dati in `server_mcp/risorse/` (non `dati/`, esclusa da Git); non dipendono da `agente/`.
+  `catalogo`, `orologio`, `utente` con la resource delle preferenze e i prompt `spiega`, `riassumi_conversazione`); dati in `server_mcp/risorse/` (non `dati/`, esclusa da Git); non dipendono da `agente/`.
 - `tests/`: test automatici senza modello; `tests/reale/`: prove con LM Studio vero.
 - `docs/`: `COME_FUNZIONA.md`, `GRAFO_E_STRUMENTI.md`, `PERCORSO_PROGETTO.md`, `GUIDA_DOCKER.md`,
   `GUIDA_PASSO_PASSO.md`, `PROSSIMA_SESSIONE.md`, specifica e piano.
