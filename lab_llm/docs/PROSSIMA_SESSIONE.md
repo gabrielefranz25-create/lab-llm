@@ -49,6 +49,11 @@
   `feat/agente-http`, unito in `dev`.
 - Prossimo: step 7 (back-end con PostgreSQL), poi 8–9.
 
+## Stato al 2026-11-15 (step 7 fatto)
+- Step 6 unito in `dev` (i documenti non erano ancora committati). Step 7 (back-end, `python -m backend`,
+  PostgreSQL) su `feat/backend`, unito in `dev`.
+- Prossimo: step 8 (front-end), poi 9.
+
 ## Prompt da incollare (ripartenza)
 ```
 Leggi il CLAUDE.md e docs/PROSSIMA_SESSIONE.md e controlla lo stato della repository.

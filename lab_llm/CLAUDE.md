@@ -10,6 +10,8 @@ La cartella del progetto è `lab_llm/`. Specifica e piano sono in `lab_llm/docs/
   `preferenze` (resource `utente://preferenze` letta all'avvio), `comandi` (`/prompts` e `/prompt`, prompt
   MCP), `nucleo` (Agente senza stato: un turno), `main` (chat locale e `costruisci_agente`),
   `servizio` (API FastAPI dell'agente), `cli` (chat come client dell'API).
+- `backend/`: back-end delle chat (step 7), indipendente da `agente/`: `config`, `archivio` (PostgreSQL con
+  psycopg, in memoria nei test), `agente_remoto` (client di `POST /chat`), `api` (FastAPI).
 - `servizio_orologio/`: logica dell'orologio condivisa (`logica`) e servizio FastAPI (`api`), usati dalle
   tre varianti scelte con `VARIANTE_OROLOGIO` (`locale`, `fastapi`, `mcp`).
 - `server_mcp/`: server MCP come processi separati (`meteo`, `note`, `unita`, `calcolatrice`, `scadenze`,
@@ -24,6 +26,8 @@ La cartella del progetto è `lab_llm/`. Specifica e piano sono in `lab_llm/docs/
 - Avvio: `python -m agente`. Docker: `docker compose build`, poi `docker compose run --rm assistente`.
 - Agente come servizio HTTP: `python -m agente.servizio` (OpenAPI su `/docs`), chat client dell'API
   `python -m agente.cli`.
+- Back-end: `$env:DATABASE_URL="postgresql://lab:lab@localhost:55432/lab"; python -m backend` (porta 8080,
+  `/docs`); test dell'archivio su PostgreSQL vero con `$env:POSTGRES_URL=...` (database di prova, viene svuotato).
 - Servizio FastAPI dell'orologio (variante `fastapi`): `python -m servizio_orologio.api`; in Docker
   `docker compose --profile fastapi up -d orologio-api`.
 - Server MCP via HTTP: `python -m server_mcp.avvia_http`, poi

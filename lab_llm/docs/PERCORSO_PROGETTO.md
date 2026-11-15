@@ -271,6 +271,19 @@ Materiale: `materiali/LLM_Lez_6.pdf`. Uno step alla volta, ciascuno con spec, pi
   senza argomento → 400; CLI remota via pipe con le stesse risposte; con `LM_BASE_URL` sbagliato `/stato` e
   `/chat` → 503 con messaggio comprensibile.
 
+#### Step 7 (14–15/11): back-end con PostgreSQL. Branch `feat/backend`
+- Prompt: «completa il progetto»; modalità autonoma (sessione interrotta dopo il codice, ripresa il 15/11).
+- Skill e modalità: `superpowers:executing-plans` con `superpowers:test-driven-development`, modalità auto.
+- Specifica `specs/2026-11-14-backend-design.md` e piano `plans/2026-11-14-backend.md`.
+1. `docs`: specifica e piano.
+2. `build(backend)`: `psycopg[binary]==3.3.9`, `backend/config.py` (`DATABASE_URL` obbligatoria).
+3. `feat(backend)`: archivio PostgreSQL e in memoria, stessi test (`tests/test_archivio.py`).
+4. `feat(backend)`: API FastAPI (`/chat`, `/chat/{id}`, `/chat/{id}/messaggi`, `/stato`), `ClienteAgente`, `python -m backend`.
+5. `test(reale)`: `tests/reale/test_backend_reale.py`, PostgreSQL e agente veri, chat ritrovata dopo il riavvio.
+6. `docs`: guide aggiornate.
+- Evidenze (2026-11-15): `tests/test_archivio.py` + `tests/test_backend.py` → 28 passed con PostgreSQL 16 in
+  container; prova reale `1 passed`; a mano con l'agente spento `/stato` e invio → 503, chat rimasta vuota.
+
 | Step | Cosa | Evidenza minima | Stato |
 |---|---|---|---|
 | 1 | Router: in ambito o fuori ambito | domanda fuori ambito rifiutata senza passare dall'agente | fatto (`feat/router`) |
@@ -279,6 +292,6 @@ Materiale: `materiali/LLM_Lez_6.pdf`. Uno step alla volta, ciascuno con spec, pi
 | 4 | Resource MCP `utente://preferenze` | preferenze applicate; si cambia il file, non il codice | fatto (`feat/preferenze`) |
 | 5 | Prompt MCP `/prompts`, `/prompt` | comandi funzionanti con argomenti validati | fatto (`feat/prompt-mcp`) |
 | 6 | Agente come servizio HTTP | stessa risposta da CLI e da API | fatto (`feat/agente-http`) |
-| 7 | Back-end + PostgreSQL | chat persistenti dopo il riavvio; OpenAPI | da fare |
+| 7 | Back-end + PostgreSQL | chat persistenti dopo il riavvio; OpenAPI | fatto (`feat/backend`) |
 | 8 | Front-end di chat | conversazione completa dal browser, errori mostrati | da fare |
 | 9 | Docker Compose con 4 container | un comando avvia tutto; agente non esposto | da fare |

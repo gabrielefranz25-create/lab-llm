@@ -53,6 +53,8 @@ main.py ──► config.py        variabili d'ambiente → Config (errori chiar
 
 servizio.py ─► main.costruisci_agente + nucleo.Agente, esposti con FastAPI (/chat, /prompts, /stato)
 cli.py ──────► chat come client dell'API (httpx), nessun grafo nel processo
+
+backend/ ────► chat e messaggi in PostgreSQL, domande inoltrate a POST /chat dell'agente (non importa agente/)
 ```
 
 - `graph.py` non importa `llm.py`: modello e strumenti gli arrivano da fuori. Così i test usano un
@@ -370,6 +372,22 @@ strumento assente confonde il modello.
 - `cli.py`: `ClienteAgente` (httpx, timeout 600 s) e `avvia_cli`, con gli stessi comandi della chat; la
   sintassi di `/prompt` si controlla nella CLI (`interpreta_riga`), nome e argomenti nel servizio.
 
+## Il back-end delle chat (step 7)
+
+- `backend/` non importa nulla da `agente/`: parla con l'agente solo via HTTP (`agente_remoto.ClienteAgente`,
+  `POST {AGENTE_URL}/chat`), come farà dal proprio container allo step 9.
+- `archivio.py`: `ArchivioPostgres` (psycopg 3, una connessione per operazione, tabelle create all'avvio con
+  `CREATE TABLE IF NOT EXISTS`) e `ArchivioMemoria` con la stessa interfaccia, per i test dell'API. Gli
+  stessi test (`tests/test_archivio.py`) girano su entrambi; PostgreSQL solo con `POSTGRES_URL`.
+- Due livelli di dati: `chat.cronologia` (jsonb) è la cronologia completa per l'agente, nel formato di
+  `messages_to_dict` (tool_call, ToolMessage, note del revisore), con `chat.riassunto`; `messaggi` contiene
+  solo domanda e risposta da mostrare, con la traccia degli strumenti.
+- `POST /chat/{id}/messaggi`: legge cronologia e riassunto, chiama l'agente e **solo se risponde** salva in
+  una transazione domanda, risposta, nuova cronologia, nuovo riassunto ed eventuale titolo. Così un agente
+  spento non lascia domande senza risposta nella chat.
+- Errori: `AgenteNonDisponibile(codice, messaggio)`; 503 (agente o modello irraggiungibili) resta 503, gli altri
+  errori dell'agente diventano 502. Sempre `{"errore": "..."}`, come nell'agente.
+
 ## Prompt MCP: `/prompts` e `/prompt` (step 5)
 
 - `agente/comandi.py`, `ComandiPrompt(connessione)`: all'avvio della chat `elenca_prompt("utente")`
@@ -436,6 +454,9 @@ stampata.
 | resource non disponibile o campo non valido | WARNING | `preferenze: resource utente://preferenze non disponibile, uso i valori predefiniti (lingua=italiano fuso_orario=Europe/Rome stile=sintetico): …` |
 | catalogo dei prompt | INFO | `prompt: catalogo del server utente [spiega, riassumi_conversazione]` |
 | prompt richiamato | INFO | `prompt: richiamato spiega argomenti={"argomento": "Model Context Protocol", "livello": "base"} dal server utente: 1 messaggi` |
+| chat creata o eliminata (back-end) | INFO | `backend: chat 1 creata` |
+| domanda inoltrata all'agente | INFO | `backend: chat 1 messaggio inviato all'agente -> 200 in 119.9 s strumenti=[ora_corrente]` |
+| agente non raggiungibile dal back-end | WARNING | `backend: chat 2 messaggio inviato all'agente -> 503 in 2.0 s: L'agente non è raggiungibile su …` |
 | richiesta all'API | INFO | `api: POST /chat cronologia=0 -> 200 strumenti=[ora_corrente] in 68.2 s` |
 | modello non raggiungibile dall'API | ERROR | `api: modello non raggiungibile: Connection error.` |
 | giudizio del revisore | INFO | `revisore: coerente=no motivo=La risposta tratta solo l'ora a Tokyo e ignora il calcolo. -> agente (revisione 1 di 2)` |
