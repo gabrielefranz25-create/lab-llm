@@ -388,6 +388,21 @@ strumento assente confonde il modello.
 - Errori: `AgenteNonDisponibile(codice, messaggio)`; 503 (agente o modello irraggiungibili) resta 503, gli altri
   errori dell'agente diventano 502. Sempre `{"errore": "..."}`, come nell'agente.
 
+## Quattro container (step 9)
+
+```
+browser ──► frontend (nginx, :8090) ──/api/──► backend (:8080) ──► agente (:8000) ──► LM Studio sull'host
+                                                   │                    └─► server MCP (stdio, nello stesso container)
+                                                   └──► db (PostgreSQL, volume postgres)
+```
+
+- Solo `frontend` pubblica una porta. nginx serve `/config.js` con `backend = "/api"`: la stessa pagina dello
+  step 8 funziona senza modifiche, e il browser non vede mai indirizzi interni.
+- Ordine di avvio: `db` healthy (`pg_isready`) → `backend` (healthcheck su `/openapi.json`, indipendente
+  dall'agente) → `frontend`. L'agente può essere ancora in avvio: il back-end risponde 503 finché non c'è.
+- `backend/Dockerfile` installa solo `backend/requirements.txt` (stesse versioni di `requirements.txt`, verificato
+  da `tests/test_immagini.py`); l'agente usa il `Dockerfile` di sempre con un altro `command`.
+
 ## Il front-end di chat (step 8)
 
 - `frontend/static/app.js`: tutte le chiamate passano da `chiama(metodo, percorso, corpo)`, che trasforma

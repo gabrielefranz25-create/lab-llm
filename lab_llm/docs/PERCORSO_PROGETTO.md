@@ -299,6 +299,20 @@ Materiale: `materiali/LLM_Lez_6.pdf`. Uno step alla volta, ciascuno con spec, pi
   del back-end, agente spento → 503 leggibile e nulla salvato. L'estensione di Chrome non era disponibile:
   la prova a vista nel browser resta da fare.
 
+#### Step 9 (15/11): Docker Compose con quattro container. Branch `feat/compose`
+- Prompt: «completa il progetto»; modalità autonoma.
+- Skill e modalità: `superpowers:executing-plans`, modalità auto.
+- Specifica `specs/2026-11-15-compose-design.md` e piano `plans/2026-11-15-compose.md`.
+1. `docs`: specifica e piano.
+2. `build(backend)`: `backend/Dockerfile` con le sole dipendenze del back-end (`tests/test_immagini.py`).
+3. `build(frontend)`: nginx con `/config.js` e proxy `/api/`.
+4. `build(compose)`: `db`, `agente`, `backend`, `frontend`; `assistente` nel profilo `cli`; credenziali in `.env`.
+5. `fix(frontend)`: alla prima prova `down`/`up` nginx rispondeva 502 mentre il back-end si avviava →
+   healthcheck del back-end, front-end avviato a back-end pronto, messaggio chiaro per 502-504.
+6. `docs`: guide aggiornate.
+- Evidenze (2026-11-15): `docker compose ps` con quattro servizi e solo la porta 8090; chat via proxy con
+  `calcola` nei log dell'agente; chat presente dopo `down`/`up`; agente fermato → 503 leggibile.
+
 | Step | Cosa | Evidenza minima | Stato |
 |---|---|---|---|
 | 1 | Router: in ambito o fuori ambito | domanda fuori ambito rifiutata senza passare dall'agente | fatto (`feat/router`) |
@@ -309,4 +323,4 @@ Materiale: `materiali/LLM_Lez_6.pdf`. Uno step alla volta, ciascuno con spec, pi
 | 6 | Agente come servizio HTTP | stessa risposta da CLI e da API | fatto (`feat/agente-http`) |
 | 7 | Back-end + PostgreSQL | chat persistenti dopo il riavvio; OpenAPI | fatto (`feat/backend`) |
 | 8 | Front-end di chat | conversazione completa dal browser, errori mostrati | fatto (`feat/frontend`) |
-| 9 | Docker Compose con 4 container | un comando avvia tutto; agente non esposto | da fare |
+| 9 | Docker Compose con 4 container | un comando avvia tutto; agente non esposto | fatto (`feat/compose`) |

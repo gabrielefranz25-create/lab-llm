@@ -1,9 +1,78 @@
+# Applicazione completa (lezione 6, step 9): `docker compose up -d --build`, poi http://localhost:8090
+# Quattro container: frontend (unica porta pubblicata), backend, agente (non esposto), db (PostgreSQL).
+# LM Studio resta sull'host. Credenziali di PostgreSQL nel file .env (vedi .env.example).
+
 services:
-  assistente:
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    environment:
+      BACKEND_URL: http://backend:8080   # nginx inoltra /api/ al back-end sulla rete di compose
+    ports:
+      - "8090:80"
+    depends_on:
+      backend:
+        condition: service_healthy       # niente 502 dal proxy mentre il back-end si avvia
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:?imposta POSTGRES_USER nel file .env}:${POSTGRES_PASSWORD:?imposta POSTGRES_PASSWORD nel file .env}@db:5432/${POSTGRES_DB:?imposta POSTGRES_DB nel file .env}
+      AGENTE_URL: http://agente:8000
+      BACKEND_ASCOLTO: 0.0.0.0           # raggiungibile dal front-end; nessuna porta sull'host
+      BACKEND_ORIGINI: ""                # il browser passa dal proxy del front-end: stessa origine, niente CORS
+    depends_on:
+      db:
+        condition: service_healthy       # avviato a database pronto
+      agente:
+        condition: service_started
+    healthcheck:                         # pronto quando risponde (anche con l'agente spento)
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/openapi.json', timeout=3)"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  agente:
     build: .
+    command: ["python", "-m", "agente.servizio"]
     env_file: .env
     environment:
       LM_BASE_URL: http://host.docker.internal:1234/v1   # dal container, l'host non è "localhost"
+      AGENTE_ASCOLTO: 0.0.0.0                            # solo sulla rete di compose: nessuna porta sull'host
+      # Le credenziali del database non servono all'agente.
+      POSTGRES_USER: ""
+      POSTGRES_PASSWORD: ""
+      POSTGRES_DB: ""
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - note:/app/dati
+      - ./server_mcp/risorse/preferenze.json:/app/server_mcp/risorse/preferenze.json:ro
+
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  # Chat da terminale nel container (lezioni 4-5), profilo "cli": `docker compose run --rm assistente`
+  assistente:
+    build: .
+    profiles: ["cli"]
+    env_file: .env
+    environment:
+      LM_BASE_URL: http://host.docker.internal:1234/v1
       OROLOGIO_API_URL: http://orologio-api:8001         # usato solo con VARIANTE_OROLOGIO=fastapi
       MCP_HTTP_HOST: server-mcp                          # usato solo con TRASPORTO_MCP=http
     extra_hosts:
@@ -41,3 +110,4 @@ services:
 
 volumes:
   note: {}
+  postgres: {}

@@ -11,7 +11,14 @@ Legenda:
 
 Tutti i comandi partono dalla cartella `lab_llm/`.
 
-## Avvio normale (verificato)
+## Applicazione completa (lezione 6, step 9)
+
+`docker compose up -d --build`, poi http://localhost:8090: front-end, back-end, agente e PostgreSQL in quattro
+container, solo il front-end pubblica una porta. Credenziali `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
+nel `.env`. Dettagli e prove nel README, sezione «Applicazione completa con Docker Compose». Le chat stanno nel
+volume `postgres`: `docker compose down` le conserva, `docker compose down -v` le cancella (insieme alle note).
+
+## Avvio normale della chat da terminale (verificato)
 
 ```powershell
 docker compose build
@@ -285,7 +292,7 @@ che non supporta la tty.
 ## 9. Pulizia
 
 ```powershell
-docker compose down --rmi local   # rimuove rete del progetto e immagine lab_llm-assistente
+docker compose down --rmi local   # rimuove rete del progetto e immagini locali (assistente, agente, backend, frontend)
 docker image prune                # rimuove le immagini orfane (chiede conferma)
 ```
 

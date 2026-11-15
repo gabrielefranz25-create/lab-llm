@@ -1,0 +1,19 @@
+# Configurazione di nginx per il front-end in Docker (lezione 6, step 9).
+# L'immagine ufficiale sostituisce ${BACKEND_URL} all'avvio (envsubst sulle sole variabili definite).
+server {
+    listen 80;
+    root /usr/share/nginx/html;
+
+    # Il back-end è raggiunto attraverso questo stesso indirizzo: niente CORS, back-end non esposto.
+    location = /config.js {
+        default_type application/javascript;
+        add_header Cache-Control no-store;
+        return 200 'window.CONFIGURAZIONE = {"backend": "/api"};';
+    }
+
+    location /api/ {
+        proxy_pass ${BACKEND_URL}/;
+        proxy_set_header Host $host;
+        proxy_read_timeout 600s;   # il modello locale può impiegare minuti
+    }
+}
