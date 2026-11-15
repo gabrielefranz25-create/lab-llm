@@ -32,7 +32,9 @@ async function chiama(metodo, percorso, corpo) {
   try { dati = await risposta.json(); } catch { /* corpo non JSON */ }
   if (!risposta.ok) {
     const messaggio = (dati && dati.errore) || (dati && dati.detail && "Richiesta non valida.")
-      || `Errore ${risposta.status} dal back-end.`;
+      || ([502, 503, 504].includes(risposta.status)
+        ? `Il back-end non risponde (errore ${risposta.status}). Riprova tra poco.`
+        : `Errore ${risposta.status} dal back-end.`);
     throw new ErroreApi(messaggio, dati);
   }
   return dati;
