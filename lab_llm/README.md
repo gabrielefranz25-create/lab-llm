@@ -141,6 +141,25 @@ Assistente> ...
 - I log vanno su stderr, la chat su stdout.
 - Prova non interattiva: `"Che ore sono?`nesci" | python -m agente`.
 
+### Le tre varianti dell'orologio
+
+```powershell
+# 01 locale (default)
+python -m agente
+# 02 FastAPI: prima il servizio, in un altro terminale (porta 8001), poi l'agente
+python -m servizio_orologio.api
+$env:VARIANTE_OROLOGIO="fastapi"; python -m agente
+# 03 FastMCP: l'agente avvia da sé il server orologio via stdio
+$env:VARIANTE_OROLOGIO="mcp"; python -m agente
+```
+
+Verificato il 2026-11-12 con «Che ore sono a Tokyo?»: nelle tre varianti il modello chiama
+`ora_corrente` con `{"fuso_orario": "Asia/Tokyo"}` e la riga del nodo strumenti riporta
+`origine=locale`, `origine=http:orologio` e `origine=mcp:orologio`. Con il servizio FastAPI spento
+il modello riceve `Errore di collegamento HTTP con il servizio orologio: …`, distinto dal fuso non
+valido (`Errore dallo strumento ora_corrente: fuso orario 'Mars/Olympus' non riconosciuto…`).
+Il servizio si prova anche da solo: `curl "http://127.0.0.1:8001/ora?fuso_orario=Asia/Tokyo"`.
+
 ## L'agente come servizio HTTP (lezione 6, step 6)
 
 Lo stesso agente (stesso nucleo `agente/nucleo.py`, stesso grafo) risponde anche via HTTP, **senza
@@ -178,24 +197,40 @@ modello non è raggiungibile (OpenAIConnectionError). Controlla che LM Studio si
 `python -m agente` resta la chat locale, senza HTTP; `python -m agente.cli` è la stessa chat (comandi
 `/prompts` e `/prompt` compresi) ma passa dall'API, all'indirizzo `AGENTE_URL`.
 
-### Le tre varianti dell'orologio
+## Back-end delle chat con PostgreSQL (lezione 6, step 7)
+
+Il back-end (`backend/`, `python -m backend`) è l'unico punto di contatto del front-end: salva chat e
+messaggi in PostgreSQL e inoltra le domande all'agente (`POST /chat` dello step 6), al quale passa la
+cronologia e il riassunto salvati. Il front-end non conosce l'agente.
 
 ```powershell
-# 01 locale (default)
-python -m agente
-# 02 FastAPI: prima il servizio, in un altro terminale (porta 8001), poi l'agente
-python -m servizio_orologio.api
-$env:VARIANTE_OROLOGIO="fastapi"; python -m agente
-# 03 FastMCP: l'agente avvia da sé il server orologio via stdio
-$env:VARIANTE_OROLOGIO="mcp"; python -m agente
+# PostgreSQL (qui un container; la porta 55432 evita conflitti con un PostgreSQL già installato)
+docker run -d --name lab-postgres -e POSTGRES_USER=lab -e POSTGRES_PASSWORD=lab -e POSTGRES_DB=lab -p 55432:5432 postgres:16
+python -m agente.servizio                                            # terminale 1: l'agente (porta 8000)
+$env:DATABASE_URL="postgresql://lab:lab@localhost:55432/lab"; python -m backend   # terminale 2: porta 8080, /docs
 ```
 
-Verificato il 2026-11-12 con «Che ore sono a Tokyo?»: nelle tre varianti il modello chiama
-`ora_corrente` con `{"fuso_orario": "Asia/Tokyo"}` e la riga del nodo strumenti riporta
-`origine=locale`, `origine=http:orologio` e `origine=mcp:orologio`. Con il servizio FastAPI spento
-il modello riceve `Errore di collegamento HTTP con il servizio orologio: …`, distinto dal fuso non
-valido (`Errore dallo strumento ora_corrente: fuso orario 'Mars/Olympus' non riconosciuto…`).
-Il servizio si prova anche da solo: `curl "http://127.0.0.1:8001/ora?fuso_orario=Asia/Tokyo"`.
+| Operazione | Endpoint | Risposta |
+|---|---|---|
+| Creare una chat | `POST /chat` (corpo facoltativo `{"titolo"}`) | 201 `{"id", "titolo", "creata_il"}` |
+| Elencare le chat | `GET /chat` | `[{"id", "titolo", "ultimo_messaggio_il"}]`, la più recente prima |
+| Leggere una chat | `GET /chat/{id}` | `{"id", "titolo", "creata_il", "messaggi": [{"ruolo", "testo", "strumenti", "creato_il"}]}` |
+| Inviare un messaggio | `POST /chat/{id}/messaggi` `{"testo"}` | `{"domanda", "risposta"}` (due messaggi) |
+| Eliminare una chat | `DELETE /chat/{id}` | 204, messaggi rimossi a cascata |
+| Stato | `GET /stato` | database e agente; 200 se entrambi rispondono, altrimenti 503 |
+
+- Tabelle create all'avvio se mancano: `chat` (titolo, data, cronologia LangChain in `jsonb`, riassunto)
+  e `messaggi` (solo ciò che si mostra: ruolo, testo, strumenti usati, data).
+- Titolo «Nuova chat» fino alla prima domanda, poi i suoi primi 60 caratteri.
+- **Agente non raggiungibile**: 503 `{"errore": "L'agente non è raggiungibile su … Riprova più tardi."}` e la
+  domanda **non** viene salvata (la chat resta com'era, si può riprovare). Un errore dell'agente (per
+  esempio LM Studio spento) torna con il suo messaggio: 503 resta 503, gli altri codici diventano 502.
+  Chat inesistente → 404, testo vuoto → 400.
+- Variabili: `DATABASE_URL` (obbligatoria), `AGENTE_URL`, `AGENTE_TIMEOUT`, `BACKEND_ASCOLTO`, `BACKEND_PORTA`
+  (vedi `.env.example`). Con PostgreSQL spento `python -m backend` esce con `Errore: PostgreSQL non raggiungibile (…)`.
+- Verificato il 2026-11-15 con l'agente spento: `/stato` → 503 con `"agente": {"raggiungibile": false, …}`,
+  invio → 503 e chat ancora vuota; nel log `backend: chat 2 creata`. OpenAPI su
+  `http://127.0.0.1:8080/docs` con `/chat`, `/chat/{chat_id}`, `/chat/{chat_id}/messaggi`, `/stato`.
 
 ## Avvio con Docker
 
@@ -233,7 +268,8 @@ docker compose run --rm assistente
 python -m pytest
 ```
 
-Esito del 2026-11-13: `319 passed, 24 skipped` (le 24 prove reali risultano `skipped` senza `PROVA_REALE`). I test non richiedono
+Esito del 2026-11-15, con `POSTGRES_URL` impostata (test dell'archivio anche su PostgreSQL): `449 passed, 37 skipped`
+(le prove reali risultano `skipped` senza `PROVA_REALE`). I test non richiedono
 LM Studio: il grafo usa un modello finto e lo strumento un istante fissato.
 
 ### Prove reali con LM Studio
@@ -314,7 +350,10 @@ $env:PROVA_REALE="1"; python -m pytest tests/reale/test_prompt_reale.py -v -o lo
 Remove-Item Env:PROVA_REALE
 ```
 
-Esito del 2026-11-14: `3 passed` in circa 6 minuti; il riassunto cita l'ora di Tokyo e 180.
+Esito del 2026-11-14: `3 passed` in circa 6 minuti; il riassunto cita l'ora di Tokyo e 180. Nella quarta prova il log mostra
+`revisore: coerente=no motivo=La risposta tratta solo la prima parte della domanda (l'ora a Tokyo) e
+ignora completamente la seconda parte … -> agente (revisione 1 di 2)`, poi `ora_corrente` e
+`calcola("15*12")`, poi `revisore: coerente=si`.
 
 Prove reali del servizio HTTP (step 6), in-process con `TestClient` sopra l'agente vero: due turni via
 API con la cronologia restituita (`ora_corrente`, poi `calcola`), la stessa domanda all'API e al nucleo
@@ -325,10 +364,22 @@ $env:PROVA_REALE="1"; python -m pytest tests/reale/test_servizio_reale.py -v -o 
 Remove-Item Env:PROVA_REALE
 ```
 
-Esito del 2026-11-14: `3 passed`. Nella quarta prova il log mostra
-`revisore: coerente=no motivo=La risposta tratta solo la prima parte della domanda (l'ora a Tokyo) e
-ignora completamente la seconda parte … -> agente (revisione 1 di 2)`, poi `ora_corrente` e
-`calcola("15*12")`, poi `revisore: coerente=si`.
+Esito del 2026-11-14: `3 passed` in circa 7 minuti.
+
+Prova reale del back-end (step 7), con PostgreSQL vero (`POSTGRES_URL`, database di prova: viene
+svuotato) e l'agente vero dietro `POST /chat`: due domande (`ora_corrente`, `calcola`), poi un nuovo
+archivio e una nuova app (il riavvio) ritrovano la chat con i quattro messaggi:
+
+```powershell
+docker run -d --name lab-postgres-test -e POSTGRES_USER=lab -e POSTGRES_PASSWORD=lab -e POSTGRES_DB=lab -p 55432:5432 postgres:16
+$env:POSTGRES_URL="postgresql://lab:lab@localhost:55432/lab"
+$env:PROVA_REALE="1"; python -m pytest tests/reale/test_backend_reale.py -v -o log_cli=true --log-cli-level=INFO
+Remove-Item Env:PROVA_REALE
+```
+
+Esito del 2026-11-15: `1 passed` in circa 5 minuti; nel log `backend: chat 1 messaggio inviato all'agente -> 200
+in 119.9 s strumenti=[ora_corrente]`. Con `POSTGRES_URL` impostata anche `tests/test_archivio.py` esegue gli
+stessi test dell'archivio in memoria su PostgreSQL vero (cascata e persistenza tra due istanze compresi).
 
 Prove reali dei server delle proposte: una domanda per server (calcolo, conversione, giorni lavorativi,
 ricerca e poi dettaglio di un corso), un errore controllato per server con chiamata diretta e una
@@ -452,6 +503,7 @@ d'errore e il modello può riprovare entro `MAX_PASSI_STRUMENTO` giri: il progra
 lab_llm/
 ├── agente/            codice: config, strumenti, mcp_ponte, preferenze, comandi, graph, llm, client, nucleo,
 │                      main (chat locale), servizio (API HTTP), cli (chat client dell'API)
+├── backend/           back-end delle chat (step 7): config, archivio (PostgreSQL), agente_remoto, api
 ├── servizio_orologio/ logica condivisa dell'orologio (logica.py) e servizio FastAPI (api.py)
 ├── server_mcp/        server MCP (processi separati): meteo, note, unita, calcolatrice, scadenze, catalogo, orologio,
 │                      utente (resource utente://preferenze); avvio.py = stdio o Streamable HTTP;
