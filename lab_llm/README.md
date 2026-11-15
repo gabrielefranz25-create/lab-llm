@@ -232,6 +232,32 @@ $env:DATABASE_URL="postgresql://lab:lab@localhost:55432/lab"; python -m backend 
   invio → 503 e chat ancora vuota; nel log `backend: chat 2 creata`. OpenAPI su
   `http://127.0.0.1:8080/docs` con `/chat`, `/chat/{chat_id}`, `/chat/{chat_id}/messaggi`, `/stato`.
 
+## Front-end di chat nel browser (lezione 6, step 8)
+
+Pagina statica (HTML, CSS e JavaScript, senza framework) in `frontend/static/`, servita in locale da
+`python -m frontend`; parla **solo** con il back-end, il cui indirizzo arriva da `/config.js`, generato dalla
+variabile `FRONTEND_BACKEND_URL` (default `http://127.0.0.1:8080`).
+
+```powershell
+python -m agente.servizio                                                         # terminale 1: agente (8000)
+$env:DATABASE_URL="postgresql://lab:lab@localhost:55432/lab"; python -m backend   # terminale 2: back-end (8080)
+python -m frontend                                                                # terminale 3: http://127.0.0.1:8090
+```
+
+- Colonna a sinistra: stato (verde «pronto», rosso con ciò che manca), «+ Nuova chat», elenco delle chat
+  con data dell'ultimo messaggio ed eliminazione con conferma. A destra i messaggi, con gli strumenti usati
+  sotto ogni risposta (`ora_corrente(fuso_orario=Asia/Tokyo)`, in rosso se in errore).
+- Durante la risposta casella e pulsanti sono disabilitati e compare «L'assistente sta rispondendo… (N s)».
+- Errori in un banner con il messaggio del back-end; se l'invio fallisce la domanda torna nella casella
+  (il back-end non l'ha salvata) e si può riprovare.
+- Il back-end ammette le origini di `BACKEND_ORIGINI` (CORS; default `http://127.0.0.1:8090,http://localhost:8090`).
+- Le chiamate di `app.js` sono scritte dall'OpenAPI del back-end; `tests/test_frontend.py` controlla che ogni
+  `chiama("METODO", "/percorso")` esista con quel metodo in `/openapi.json`.
+- Verificato il 2026-11-15 via HTTP con l'header `Origin` del front-end (stesse chiamate della pagina):
+  «Che ore sono a Tokyo?» → `ora_corrente`, risposta in 84 s; dopo il riavvio del back-end la chat c'è
+  ancora; con l'agente spento l'invio dà 503 `L'agente non è raggiungibile …` (con l'header CORS, quindi la
+  pagina lo può mostrare) e la chat resta con due messaggi. **Da provare a vista nel browser.**
+
 ## Avvio con Docker
 
 LM Studio resta sull'host; il container lo raggiunge su `http://host.docker.internal:1234/v1`.
@@ -504,6 +530,7 @@ lab_llm/
 ├── agente/            codice: config, strumenti, mcp_ponte, preferenze, comandi, graph, llm, client, nucleo,
 │                      main (chat locale), servizio (API HTTP), cli (chat client dell'API)
 ├── backend/           back-end delle chat (step 7): config, archivio (PostgreSQL), agente_remoto, api
+├── frontend/          front-end di chat (step 8): static/ (index.html, stile.css, app.js), __main__ = server locale
 ├── servizio_orologio/ logica condivisa dell'orologio (logica.py) e servizio FastAPI (api.py)
 ├── server_mcp/        server MCP (processi separati): meteo, note, unita, calcolatrice, scadenze, catalogo, orologio,
 │                      utente (resource utente://preferenze); avvio.py = stdio o Streamable HTTP;

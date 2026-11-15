@@ -388,6 +388,18 @@ strumento assente confonde il modello.
 - Errori: `AgenteNonDisponibile(codice, messaggio)`; 503 (agente o modello irraggiungibili) resta 503, gli altri
   errori dell'agente diventano 502. Sempre `{"errore": "..."}`, come nell'agente.
 
+## Il front-end di chat (step 8)
+
+- `frontend/static/app.js`: tutte le chiamate passano da `chiama(metodo, percorso, corpo)`, che trasforma
+  `{"errore": …}` e gli errori di rete in `ErroreApi` con un messaggio da mostrare; l'oggetto `api` elenca le
+  sei operazioni dell'OpenAPI del back-end.
+- Nessun dato finisce in `innerHTML`: i testi delle chat si inseriscono con `textContent` (il modello
+  potrebbe scrivere HTML).
+- Senza chat aperta il primo invio fa `POST /chat` e poi `POST /chat/{id}/messaggi`; dopo la risposta si
+  rilegge la chat (`GET /chat/{id}`), così titolo e messaggi sono quelli salvati.
+- `frontend/__main__.py`: `ThreadingHTTPServer` della libreria standard sulla cartella `static/`, più
+  `/config.js` costruito da `FRONTEND_BACKEND_URL` (`window.CONFIGURAZIONE = {"backend": …}`).
+
 ## Prompt MCP: `/prompts` e `/prompt` (step 5)
 
 - `agente/comandi.py`, `ComandiPrompt(connessione)`: all'avvio della chat `elenca_prompt("utente")`
