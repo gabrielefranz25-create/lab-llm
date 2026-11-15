@@ -2,6 +2,8 @@
 
 import logging
 import sys
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import replace
 
 from langchain_core.tools import BaseTool
@@ -13,6 +15,7 @@ from agente.graph import costruisci_grafo, limite_ricorsione
 from agente.llm import (ErroreModello, crea_modello, crea_revisore, crea_riassuntore, crea_router,
                         verifica_modello)
 from agente.mcp_ponte import ConnessioneMCP, ServerMCP, unisci_strumenti
+from agente.nucleo import Agente
 from agente.preferenze import istruzioni, leggi_preferenze, predefinite
 from agente.strumenti import crea_ora_corrente, crea_ora_corrente_http
 from server_mcp.avvio import PERCORSO_HTTP, PORTE_HTTP
@@ -84,6 +87,42 @@ def strumenti_orologio(config: Config) -> list[BaseTool]:
     return strumenti
 
 
+@contextmanager
+def costruisci_agente(config: Config) -> Iterator[tuple[Agente, str]]:
+    """Preferenze, server MCP, strumenti e grafo: l'Agente usato dalla chat locale e dal servizio HTTP.
+
+    Restituisce anche l'intestazione della chat. All'uscita chiude i server MCP.
+    """
+    # Resource: la legge l'host, una volta, prima di avviare gli altri server e della prima domanda.
+    # Il suo fuso diventa il fuso predefinito della sessione (orologio, scadenze, prompt).
+    preferenze = leggi_preferenze(server_utente(config), config.mcp_timeout, predefinite(config))
+    config = replace(config, fuso_orario_predefinito=preferenze.fuso_orario)
+    # Il server utente entra anche qui per i prompt MCP (/prompts, /prompt): non ha tool.
+    with ConnessioneMCP(server_da_config(config) + [server_utente(config)],
+                        config.mcp_timeout) as connessione:
+        strumenti = unisci_strumenti(strumenti_orologio(config), connessione.strumenti)
+        grafo = costruisci_grafo(
+            crea_modello(config, strumenti), strumenti,
+            max_passi=config.max_passi_strumento,
+            max_messaggi_contesto=config.max_messaggi_contesto,
+            fuso_predefinito=config.fuso_orario_predefinito,
+            riassuntore=crea_riassuntore(config),
+            messaggi_da_tenere=config.messaggi_da_tenere,
+            router=crea_router(config),
+            ambito=config.ambito,
+            revisore=crea_revisore(config),
+            max_revisioni=config.max_revisioni,
+            preferenze=istruzioni(preferenze),
+        )
+        intestazione = (f"Modello: {config.lm_model}  |  Server: {config.lm_base_url}  |  "
+                        f"Fuso predefinito: {config.fuso_orario_predefinito}  |  "
+                        f"Preferenze: lingua={preferenze.lingua}, stile={preferenze.stile}  |  "
+                        f"Strumenti: {', '.join(s.name for s in strumenti)}")
+        yield Agente(config=config, grafo=grafo, comandi=ComandiPrompt(connessione), connessione=connessione,
+                     recursion_limit=limite_ricorsione(config.max_passi_strumento, config.max_revisioni)), \
+            intestazione
+
+
 def main() -> int:
     """0 a sessione conclusa, 1 se configurazione o modello non sono utilizzabili."""
     try:
@@ -107,37 +146,9 @@ def main() -> int:
         return 130
 
     try:
-        # Resource: la legge l'host, una volta, prima di avviare gli altri server e della prima domanda.
-        # Il suo fuso diventa il fuso predefinito della sessione (orologio, scadenze, prompt).
-        preferenze = leggi_preferenze(server_utente(config), config.mcp_timeout, predefinite(config))
-        config = replace(config, fuso_orario_predefinito=preferenze.fuso_orario)
-        # Il server utente entra anche qui per i prompt MCP (/prompts, /prompt): non ha tool.
-        with ConnessioneMCP(server_da_config(config) + [server_utente(config)],
-                            config.mcp_timeout) as connessione:
-            strumenti = unisci_strumenti(strumenti_orologio(config), connessione.strumenti)
-            grafo = costruisci_grafo(
-                crea_modello(config, strumenti), strumenti,
-                max_passi=config.max_passi_strumento,
-                max_messaggi_contesto=config.max_messaggi_contesto,
-                fuso_predefinito=config.fuso_orario_predefinito,
-                riassuntore=crea_riassuntore(config),
-                messaggi_da_tenere=config.messaggi_da_tenere,
-                router=crea_router(config),
-                ambito=config.ambito,
-                revisore=crea_revisore(config),
-                max_revisioni=config.max_revisioni,
-                preferenze=istruzioni(preferenze),
-            )
-            avvia_sessione(
-                grafo,
-                intestazione=(f"Modello: {config.lm_model}  |  Server: {config.lm_base_url}  |  "
-                              f"Fuso predefinito: {config.fuso_orario_predefinito}  |  "
-                              f"Preferenze: lingua={preferenze.lingua}, stile={preferenze.stile}  |  "
-                              f"Strumenti: {', '.join(s.name for s in strumenti)}"),
-                server=config.lm_base_url,
-                recursion_limit=limite_ricorsione(config.max_passi_strumento, config.max_revisioni),
-                comandi=ComandiPrompt(connessione),
-            )
+        with costruisci_agente(config) as (agente, intestazione):
+            avvia_sessione(agente.grafo, intestazione=intestazione, server=config.lm_base_url,
+                           recursion_limit=agente.recursion_limit, comandi=agente.comandi)
     except KeyboardInterrupt:  # Ctrl+C durante l'avvio dei server MCP
         print("Interrotto.", file=sys.stderr)
         return 130

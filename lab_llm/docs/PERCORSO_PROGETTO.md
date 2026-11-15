@@ -252,6 +252,25 @@ Materiale: `materiali/LLM_Lez_6.pdf`. Uno step alla volta, ciascuno con spec, pi
   `python -m agente`: `/prompts` con argomenti e descrizioni, `/prompt spiega` senza argomento bloccato,
   `/aiuto` sconosciuto.
 
+#### Step 6 (14/11): l'agente come servizio HTTP. Branch `feat/agente-http`
+- Prompt: «riprendi il progetto e completalo», «continua»; modalità autonoma.
+- Skill e modalità: `superpowers:executing-plans` con `superpowers:test-driven-development`, modalità auto.
+- Specifica `specs/2026-11-14-agente-http-design.md` e piano `plans/2026-11-14-agente-http.md`.
+1. `docs`: specifica e piano.
+2. `refactor(comandi)`: `compila(nome, argomenti)` separato dal parsing della riga; `catalogo_json`.
+3. `feat(nucleo)`: `Agente` senza stato (turno, traccia degli strumenti, stato), `costruisci_agente` in `main.py`.
+4. `feat(servizio)`: FastAPI con `/chat`, `/prompts`, `/stato`; `AGENTE_ASCOLTO`, `AGENTE_PORTA`, `AGENTE_URL`.
+5. `feat(cli)`: `python -m agente.cli`, la chat come client dell'API.
+6. `test(reale)`: `tests/reale/test_servizio_reale.py`. Il confronto API/locale con «15 per 12» falliva
+   perché il modello a volte non chiama `calcola` senza cronologia (in entrambi i percorsi): confronto
+   fatto con «Che ore sono a Tokyo?».
+7. `fix(servizio)`: logger `agente.servizio` anche con `python -m`.
+8. `docs`: guide aggiornate.
+- Evidenze a mano (2026-11-14): servizio avviato, `curl /stato` 200, `/openapi.json` con `/chat`, `/prompts`,
+  `/stato`; `POST /chat` «Che ore sono a Tokyo?» → `ora_corrente` nella traccia e nel log; `/prompt spiega`
+  senza argomento → 400; CLI remota via pipe con le stesse risposte; con `LM_BASE_URL` sbagliato `/stato` e
+  `/chat` → 503 con messaggio comprensibile.
+
 | Step | Cosa | Evidenza minima | Stato |
 |---|---|---|---|
 | 1 | Router: in ambito o fuori ambito | domanda fuori ambito rifiutata senza passare dall'agente | fatto (`feat/router`) |
@@ -259,7 +278,7 @@ Materiale: `materiali/LLM_Lez_6.pdf`. Uno step alla volta, ciascuno con spec, pi
 | 3 | Riassunto della cronologia | info del primo turno usata dopo la compressione | fatto (`feat/riassunto`) |
 | 4 | Resource MCP `utente://preferenze` | preferenze applicate; si cambia il file, non il codice | fatto (`feat/preferenze`) |
 | 5 | Prompt MCP `/prompts`, `/prompt` | comandi funzionanti con argomenti validati | fatto (`feat/prompt-mcp`) |
-| 6 | Agente come servizio HTTP | stessa risposta da CLI e da API | da fare |
+| 6 | Agente come servizio HTTP | stessa risposta da CLI e da API | fatto (`feat/agente-http`) |
 | 7 | Back-end + PostgreSQL | chat persistenti dopo il riavvio; OpenAPI | da fare |
 | 8 | Front-end di chat | conversazione completa dal browser, errori mostrati | da fare |
 | 9 | Docker Compose con 4 container | un comando avvia tutto; agente non esposto | da fare |

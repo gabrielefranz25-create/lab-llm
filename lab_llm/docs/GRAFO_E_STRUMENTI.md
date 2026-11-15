@@ -4,7 +4,7 @@ Spiegazione del grafo LangGraph dell'agente e degli strumenti che usa.
 **Da aggiornare a ogni modifica del grafo, dello stato o degli strumenti.**
 Per i dettagli di funzionamento vedi anche `COME_FUNZIONA.md`.
 
-Stato al 2026-11-14: lezione 5 completa; lezione 6 step 1–5 (router, revisore, riassunto, resource, prompt) fatti.
+Stato al 2026-11-14: lezione 5 completa; lezione 6 step 1–6 (router, revisore, riassunto, resource, prompt, agente HTTP) fatti.
 
 ## 1. Il grafo di oggi
 
@@ -147,6 +147,12 @@ Errore comune: esporre tutto come tool. Così le decisioni che spettano all'appl
   da un prompt: router, strumenti e revisore lavorano come sempre. L'ambito predefinito del router
   comprende «spiegazioni di concetti di informatica e di intelligenza artificiale, riassunti della
   conversazione».
+
+### Chi invoca il grafo (step 6)
+Il grafo non cambia: lo invoca `client.rispondi`, chiamato dalla chat locale (`python -m agente`) e da
+`nucleo.Agente.turno`, che il servizio HTTP (`python -m agente.servizio`, `POST /chat`) usa per ogni
+richiesta. Cronologia (`messages`) e `riassunto` dello stato arrivano dal chiamante e tornano aggiornati:
+l'agente non conserva nulla tra un turno e l'altro.
 
 ## 4. Il grafo che vogliamo (lezione 6)
 

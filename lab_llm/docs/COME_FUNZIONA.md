@@ -48,7 +48,11 @@ main.py ──► config.py        variabili d'ambiente → Config (errori chiar
    │──────► comandi.py       /prompts e /prompt: prompt MCP richiamati dall'utente
    │──────► mcp_ponte.py     avvia i server MCP e ne espone il catalogo come tool sincroni; legge le resource
    │──────► graph.py         stato, nodi, instradamento, compattazione, finestra di contesto
+   │──────► nucleo.py        Agente senza stato: un turno (cronologia e riassunto dal chiamante), stato
    └──────► client.py        ciclo della chat e cronologia
+
+servizio.py ─► main.costruisci_agente + nucleo.Agente, esposti con FastAPI (/chat, /prompts, /stato)
+cli.py ──────► chat come client dell'API (httpx), nessun grafo nel processo
 ```
 
 - `graph.py` non importa `llm.py`: modello e strumenti gli arrivano da fuori. Così i test usano un
@@ -350,6 +354,22 @@ strumento assente confonde il modello.
   laboratorio.» non chiamava `calcola` per «15 per 12» (0 su 3), e lo stesso togliendo «(ora
   italiana)». Con la forma attuale 3 su 3. «(ora italiana)» resta solo con `Europe/Rome`.
 
+## L'agente come servizio HTTP (step 6)
+
+- `main.costruisci_agente(config)` (context manager) fa ciò che prima faceva `main()`: preferenze, server
+  MCP, strumenti, grafo, comandi dei prompt. Restituisce un `nucleo.Agente`, usato sia dalla chat locale
+  (`python -m agente`) sia dal servizio (`python -m agente.servizio`): la logica non è duplicata.
+- `Agente.turno(cronologia, riassunto, testo=… | prompt=(nome, argomenti))` chiama `client.rispondi` e
+  aggiunge la **traccia degli strumenti** del turno: i messaggi nuovi sono quelli il cui `id` non era
+  nella cronologia ricevuta (gli id sopravvivono al viaggio in JSON); per ogni tool_call nome, argomenti
+  ed esito (`errore` se il `ToolMessage` inizia con «Errore» o «Non eseguito»).
+- `servizio.crea_app(agente)`: `POST /chat` converte la cronologia con `messages_from_dict` e la
+  restituisce con `messages_to_dict`; gli errori diventano `{"errore": …}` con 400, 500 o 503. Log
+  `api: POST /chat cronologia=N -> codice strumenti=[…] in S s`. `GET /stato` interroga `GET /models`
+  di LM Studio e guarda quali server MCP hanno risposto al catalogo.
+- `cli.py`: `ClienteAgente` (httpx, timeout 600 s) e `avvia_cli`, con gli stessi comandi della chat; la
+  sintassi di `/prompt` si controlla nella CLI (`interpreta_riga`), nome e argomenti nel servizio.
+
 ## Prompt MCP: `/prompts` e `/prompt` (step 5)
 
 - `agente/comandi.py`, `ComandiPrompt(connessione)`: all'avvio della chat `elenca_prompt("utente")`
@@ -416,6 +436,8 @@ stampata.
 | resource non disponibile o campo non valido | WARNING | `preferenze: resource utente://preferenze non disponibile, uso i valori predefiniti (lingua=italiano fuso_orario=Europe/Rome stile=sintetico): …` |
 | catalogo dei prompt | INFO | `prompt: catalogo del server utente [spiega, riassumi_conversazione]` |
 | prompt richiamato | INFO | `prompt: richiamato spiega argomenti={"argomento": "Model Context Protocol", "livello": "base"} dal server utente: 1 messaggi` |
+| richiesta all'API | INFO | `api: POST /chat cronologia=0 -> 200 strumenti=[ora_corrente] in 68.2 s` |
+| modello non raggiungibile dall'API | ERROR | `api: modello non raggiungibile: Connection error.` |
 | giudizio del revisore | INFO | `revisore: coerente=no motivo=La risposta tratta solo l'ora a Tokyo e ignora il calcolo. -> agente (revisione 1 di 2)` |
 | limite di revisioni | WARNING | `revisore: limite di 2 revisioni raggiunto, restituita l'ultima risposta` |
 | revisore non riuscito | WARNING | `revisore non riuscito, risposta accettata: Connection error.` |

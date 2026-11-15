@@ -8,7 +8,8 @@ La cartella del progetto è `lab_llm/`. Specifica e piano sono in `lab_llm/docs/
   `config` (variabili d'ambiente), `strumenti` (orologio), `graph` (stato, nodi, instradamento),
   `llm` (LM Studio), `client` (chat da terminale), `mcp_ponte` (ponte sincrono verso i server MCP),
   `preferenze` (resource `utente://preferenze` letta all'avvio), `comandi` (`/prompts` e `/prompt`, prompt
-  MCP), `main` (avvio).
+  MCP), `nucleo` (Agente senza stato: un turno), `main` (chat locale e `costruisci_agente`),
+  `servizio` (API FastAPI dell'agente), `cli` (chat come client dell'API).
 - `servizio_orologio/`: logica dell'orologio condivisa (`logica`) e servizio FastAPI (`api`), usati dalle
   tre varianti scelte con `VARIANTE_OROLOGIO` (`locale`, `fastapi`, `mcp`).
 - `server_mcp/`: server MCP come processi separati (`meteo`, `note`, `unita`, `calcolatrice`, `scadenze`,
@@ -21,6 +22,8 @@ La cartella del progetto è `lab_llm/`. Specifica e piano sono in `lab_llm/docs/
 
 ## Comandi (PowerShell, dalla cartella `lab_llm/`, venv `.venv` attivo)
 - Avvio: `python -m agente`. Docker: `docker compose build`, poi `docker compose run --rm assistente`.
+- Agente come servizio HTTP: `python -m agente.servizio` (OpenAPI su `/docs`), chat client dell'API
+  `python -m agente.cli`.
 - Servizio FastAPI dell'orologio (variante `fastapi`): `python -m servizio_orologio.api`; in Docker
   `docker compose --profile fastapi up -d orologio-api`.
 - Server MCP via HTTP: `python -m server_mcp.avvia_http`, poi

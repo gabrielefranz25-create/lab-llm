@@ -105,3 +105,25 @@ def test_server_non_disponibile(caplog):
     assert "Prompt non disponibili" in comandi.elenco()
     with pytest.raises(ErroreComando, match="non disponibili"):
         comandi.richiama("/prompt spiega argomento=MCP")
+
+
+def test_compila_controlla_gli_argomenti_senza_parsing():
+    connessione = ConnessioneFinta()
+    comandi = ComandiPrompt(connessione)
+    with pytest.raises(ErroreComando, match="sconosciuto: colore"):
+        comandi.compila("spiega", {"argomento": "MCP", "colore": "blu"})
+    assert connessione.richieste == []
+    assert comandi.compila("spiega", {"argomento": "MCP"})[0].content.startswith("Spiegami")
+
+
+def test_interpreta_riga_senza_catalogo():
+    from agente.comandi import interpreta_riga
+    assert interpreta_riga('/prompt spiega argomento="Model Context Protocol" livello=base') == (
+        "spiega", {"argomento": "Model Context Protocol", "livello": "base"})
+
+
+def test_catalogo_json():
+    (spiega, _) = ComandiPrompt(ConnessioneFinta()).catalogo_json()
+    assert spiega["nome"] == "spiega"
+    assert spiega["argomenti"][0] == {"nome": "argomento", "descrizione": "concetto da spiegare",
+                                      "obbligatorio": True}
