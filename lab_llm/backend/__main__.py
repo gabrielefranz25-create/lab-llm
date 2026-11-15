@@ -30,7 +30,7 @@ def main() -> int:
         return 1
     logger.info("backend: http://%s:%d (documentazione su /docs), agente su %s", config.ascolto, config.porta,
                 config.agente_url)
-    app = crea_app(archivio, ClienteAgente(config.agente_url, config.agente_timeout))
+    app = crea_app(archivio, ClienteAgente(config.agente_url, config.agente_timeout), config.origini)
     uvicorn.run(app, host=config.ascolto, port=config.porta, log_level=config.log_level.lower())
     return 0
 

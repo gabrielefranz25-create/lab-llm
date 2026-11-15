@@ -11,6 +11,10 @@ class ErroreConfigurazione(Exception):
     """Variabile mancante o non valida: il messaggio dice quale."""
 
 
+# Origini del front-end ammesse dal CORS (python -m frontend, step 8); in Docker passa dal proxy.
+ORIGINI_PREDEFINITE = ("http://127.0.0.1:8090", "http://localhost:8090")
+
+
 @dataclass(frozen=True)
 class ConfigBackend:
     database_url: str
@@ -19,6 +23,7 @@ class ConfigBackend:
     ascolto: str = "127.0.0.1"
     porta: int = 8080
     log_level: str = "INFO"
+    origini: tuple[str, ...] = ORIGINI_PREDEFINITE
 
 
 def carica_config(ambiente: Mapping[str, str] | None = None) -> ConfigBackend:
@@ -44,6 +49,9 @@ def carica_config(ambiente: Mapping[str, str] | None = None) -> ConfigBackend:
             raise ErroreConfigurazione(f"{nome} deve essere maggiore di zero, non {testo}.")
         return valore
 
+    # BACKEND_ORIGINI presente ma vuota: nessuna origine ammessa.
+    origini = (ORIGINI_PREDEFINITE if "BACKEND_ORIGINI" not in ambiente
+               else tuple(o.strip() for o in ambiente["BACKEND_ORIGINI"].split(",") if o.strip()))
     return ConfigBackend(
         database_url=leggi("DATABASE_URL"),
         agente_url=leggi("AGENTE_URL", "http://127.0.0.1:8000").rstrip("/"),
@@ -51,4 +59,5 @@ def carica_config(ambiente: Mapping[str, str] | None = None) -> ConfigBackend:
         ascolto=leggi("BACKEND_ASCOLTO", "127.0.0.1"),
         porta=numero("BACKEND_PORTA", "8080", int),
         log_level=leggi("LOG_LEVEL", "INFO").upper(),
+        origini=origini,
     )
