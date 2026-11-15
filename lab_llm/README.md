@@ -112,6 +112,8 @@ Invoke-RestMethod http://localhost:1234/v1/models | Select-Object -ExpandPropert
 | `SERVER_MCP` | no | tutti (`meteo,note,unita,calcolatrice,scadenze,catalogo`) | server MCP da avviare, separati da virgole; se la variabile è presente ma vuota non parte nessun server; un nome sconosciuto dà un errore di configurazione |
 | `AMBITO_AGENTE` | no | ora e saluti + una frase per ogni server attivo | ambito dell'agente in linguaggio naturale, letto dal router; se manca si compone con `ambito_predefinito` in `agente/config.py` (`AMBITO_PER_SERVER`), così togliendo un server da `SERVER_MCP` il router smette di accettarne le domande; compare anche nel messaggio di rifiuto |
 | `PREFERENZE_FILE` | no | `server_mcp/risorse/preferenze.json` | file JSON delle preferenze (`lingua`, `fuso_orario`, `stile`) letto dal server `utente`; relativo a `lab_llm/`; il suo fuso prevale su `FUSO_ORARIO_PREDEFINITO` |
+| `AGENTE_ASCOLTO`, `AGENTE_PORTA` | no | `127.0.0.1`, `8000` | indirizzo su cui ascolta `python -m agente.servizio` |
+| `AGENTE_URL` | no | `http://127.0.0.1:8000` | indirizzo del servizio per `python -m agente.cli` |
 | `MAX_REVISIONI` | no | `2` | revisioni per domanda chieste dal revisore, intero ≥ 0; con `0` il revisore giudica e scrive nel log ma non rimanda mai la risposta all'agente |
 | `PROVA_REALE` | no | — | solo per i test con LM Studio vero (vedi sotto) |
 
@@ -138,6 +140,43 @@ Assistente> ...
 - Per uscire: `esci`, `exit`, `quit`, Ctrl+C oppure Ctrl+Z e Invio.
 - I log vanno su stderr, la chat su stdout.
 - Prova non interattiva: `"Che ore sono?`nesci" | python -m agente`.
+
+## L'agente come servizio HTTP (lezione 6, step 6)
+
+Lo stesso agente (stesso nucleo `agente/nucleo.py`, stesso grafo) risponde anche via HTTP, **senza
+stato**: cronologia e riassunto arrivano con ogni richiesta e tornano aggiornati.
+
+```powershell
+python -m agente.servizio                 # API su http://127.0.0.1:8000, documentazione su /docs
+python -m agente.cli                      # in un altro terminale: la chat come client dell'API
+```
+
+| Endpoint | Cosa fa |
+|---|---|
+| `POST /chat` | `{"messaggio": "...", "cronologia": [...], "riassunto": ""}` (oppure `"prompt": {"nome", "argomenti"}` al posto di `messaggio`) → `{"risposta", "cronologia", "riassunto", "strumenti": [{"nome", "argomenti", "esito"}]}` |
+| `GET /prompts` | prompt MCP disponibili, con gli argomenti |
+| `GET /stato` | agente, modello (LM Studio) e server MCP; 200 se il modello risponde, altrimenti 503 |
+| `GET /docs`, `GET /openapi.json` | documentazione OpenAPI generata da FastAPI |
+
+La cronologia viaggia nel formato JSON di LangChain (`messages_to_dict`): il chiamante la rimanda così
+com'è al turno dopo. Errori sempre come `{"errore": "..."}`: LM Studio non raggiungibile → 503; prompt o
+argomenti non validi, né messaggio né prompt, cronologia non valida → 400; limite di passaggi → 500.
+
+Prova con `curl` (in PowerShell usare `curl.exe`), verificata il 2026-11-14:
+
+```powershell
+curl.exe -s http://127.0.0.1:8000/stato
+curl.exe -s -X POST http://127.0.0.1:8000/chat -H "Content-Type: application/json" -d '{\"messaggio\": \"Che ore sono a Tokyo?\"}'
+```
+
+Risposta: `"risposta": "A Tokyo sono le 06:44:10 (fuso orario Asia/Tokyo)."`, `"strumenti": [{"nome":
+"ora_corrente", "argomenti": {"fuso_orario": "Asia/Tokyo"}, "esito": "ok"}]`; nel log del servizio
+`strumento=ora_corrente …` e `api: POST /chat cronologia=0 -> 200 strumenti=[ora_corrente] in 68.2 s`.
+Con `LM_BASE_URL` sbagliato: `/stato` → 503 con `"raggiungibile": false`, `/chat` → 503 `{"errore": "Il
+modello non è raggiungibile (OpenAIConnectionError). Controlla che LM Studio sia acceso."}`.
+
+`python -m agente` resta la chat locale, senza HTTP; `python -m agente.cli` è la stessa chat (comandi
+`/prompts` e `/prompt` compresi) ma passa dall'API, all'indirizzo `AGENTE_URL`.
 
 ### Le tre varianti dell'orologio
 
@@ -275,7 +314,18 @@ $env:PROVA_REALE="1"; python -m pytest tests/reale/test_prompt_reale.py -v -o lo
 Remove-Item Env:PROVA_REALE
 ```
 
-Esito del 2026-11-14: `3 passed` in circa 6 minuti; il riassunto cita l'ora di Tokyo e 180. Nella quarta prova il log mostra
+Esito del 2026-11-14: `3 passed` in circa 6 minuti; il riassunto cita l'ora di Tokyo e 180.
+
+Prove reali del servizio HTTP (step 6), in-process con `TestClient` sopra l'agente vero: due turni via
+API con la cronologia restituita (`ora_corrente`, poi `calcola`), la stessa domanda all'API e al nucleo
+locale con gli stessi strumenti, `/stato` e `/prompts`:
+
+```powershell
+$env:PROVA_REALE="1"; python -m pytest tests/reale/test_servizio_reale.py -v -o log_cli=true --log-cli-level=INFO
+Remove-Item Env:PROVA_REALE
+```
+
+Esito del 2026-11-14: `3 passed`. Nella quarta prova il log mostra
 `revisore: coerente=no motivo=La risposta tratta solo la prima parte della domanda (l'ora a Tokyo) e
 ignora completamente la seconda parte … -> agente (revisione 1 di 2)`, poi `ora_corrente` e
 `calcola("15*12")`, poi `revisore: coerente=si`.
@@ -400,7 +450,8 @@ d'errore e il modello può riprovare entro `MAX_PASSI_STRUMENTO` giri: il progra
 
 ```
 lab_llm/
-├── agente/            codice: config, strumenti, mcp_ponte, preferenze, graph, llm, client, main
+├── agente/            codice: config, strumenti, mcp_ponte, preferenze, comandi, graph, llm, client, nucleo,
+│                      main (chat locale), servizio (API HTTP), cli (chat client dell'API)
 ├── servizio_orologio/ logica condivisa dell'orologio (logica.py) e servizio FastAPI (api.py)
 ├── server_mcp/        server MCP (processi separati): meteo, note, unita, calcolatrice, scadenze, catalogo, orologio,
 │                      utente (resource utente://preferenze); avvio.py = stdio o Streamable HTTP;
