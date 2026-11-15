@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Assistente del laboratorio</title>
+  <link rel="stylesheet" href="stile.css">
+</head>
+<body>
+  <aside class="laterale">
+    <header class="intestazione">
+      <h1>Assistente</h1>
+      <p class="stato" id="stato" title="Stato del back-end, del database e dell'agente">
+        <span class="pallino"></span><span id="stato-testo">controllo…</span>
+      </p>
+    </header>
+    <button type="button" class="nuova" id="nuova-chat">+ Nuova chat</button>
+    <nav aria-label="Chat salvate">
+      <ul class="elenco" id="elenco-chat"></ul>
+      <p class="vuoto" id="elenco-vuoto" hidden>Nessuna chat. Scrivi una domanda per iniziare.</p>
+    </nav>
+  </aside>
+
+  <main class="principale">
+    <div class="errore" id="errore" role="alert" hidden>
+      <span id="errore-testo"></span>
+      <button type="button" class="chiudi" id="errore-chiudi" aria-label="Chiudi il messaggio d'errore">×</button>
+    </div>
+    <h2 class="titolo-chat" id="titolo-chat">Nuova chat</h2>
+    <section class="messaggi" id="messaggi" aria-live="polite">
+      <p class="benvenuto" id="benvenuto">Chiedi l'ora in una città, il meteo, un calcolo, una conversione
+        di unità o le scadenze del corso.</p>
+    </section>
+    <form class="composizione" id="composizione">
+      <textarea id="testo" rows="2" placeholder="Scrivi una domanda… (Invio per inviare, Maiusc+Invio per andare a capo)"
+                aria-label="Domanda" required></textarea>
+      <button type="submit" id="invia">Invia</button>
+    </form>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

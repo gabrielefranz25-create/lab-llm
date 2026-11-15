@@ -52,7 +52,9 @@
 ## Stato al 2026-11-15 (step 7 fatto)
 - Step 6 unito in `dev` (i documenti non erano ancora committati). Step 7 (back-end, `python -m backend`,
   PostgreSQL) su `feat/backend`, unito in `dev`.
-- Prossimo: step 8 (front-end), poi 9.
+- Step 8 (front-end, `python -m frontend`) su `feat/frontend`, unito in `dev`. Prova a vista nel browser
+  ancora da fare.
+- Prossimo: step 9 (Docker Compose con quattro container).
 
 ## Prompt da incollare (ripartenza)
 ```

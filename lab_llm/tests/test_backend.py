@@ -157,3 +157,19 @@ def test_config_backend():
         carica_config({})
     with pytest.raises(ErroreConfigurazione, match="BACKEND_PORTA"):
         carica_config({"DATABASE_URL": "x", "BACKEND_PORTA": "zero"})
+
+
+def test_config_origini_consentite():
+    assert carica_config({"DATABASE_URL": "x"}).origini == ("http://127.0.0.1:8090", "http://localhost:8090")
+    config = carica_config({"DATABASE_URL": "x", "BACKEND_ORIGINI": " http://a:1 , http://b:2 "})
+    assert config.origini == ("http://a:1", "http://b:2")
+    assert carica_config({"DATABASE_URL": "x", "BACKEND_ORIGINI": ""}).origini == ()
+
+
+def test_cors_per_il_front_end():
+    client = TestClient(crea_app(ArchivioMemoria(), AgenteFinto(), origini_consentite=("http://127.0.0.1:8090",)))
+    risposta = client.options("/chat", headers={"Origin": "http://127.0.0.1:8090",
+                                                "Access-Control-Request-Method": "POST"})
+    assert risposta.headers["access-control-allow-origin"] == "http://127.0.0.1:8090"
+    estranea = client.get("/chat", headers={"Origin": "http://altro:1"})
+    assert "access-control-allow-origin" not in estranea.headers

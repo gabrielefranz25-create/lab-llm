@@ -4,7 +4,7 @@ Spiegazione del grafo LangGraph dell'agente e degli strumenti che usa.
 **Da aggiornare a ogni modifica del grafo, dello stato o degli strumenti.**
 Per i dettagli di funzionamento vedi anche `COME_FUNZIONA.md`.
 
-Stato al 2026-11-15: lezione 5 completa; lezione 6 step 1–7 (router, revisore, riassunto, resource, prompt, agente HTTP, back-end) fatti.
+Stato al 2026-11-15: lezione 5 completa; lezione 6 step 1–8 (router, revisore, riassunto, resource, prompt, agente HTTP, back-end, front-end) fatti.
 
 ## 1. Il grafo di oggi
 
@@ -157,6 +157,7 @@ l'agente non conserva nulla tra un turno e l'altro.
 Dallo step 7 il chiamante tipico è il back-end (`python -m backend`): conserva `messages` (in formato JSON di
 LangChain) e `riassunto` di ogni chat in PostgreSQL e li ripassa all'agente a ogni domanda. Il grafo, lo
 stato e gli strumenti non cambiano.
+Dallo step 8 la traccia degli strumenti (`strumenti` di `POST /chat`) compare nel browser sotto ogni risposta.
 
 ## 4. Il grafo che vogliamo (lezione 6)
 
