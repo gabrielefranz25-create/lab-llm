@@ -258,15 +258,49 @@ python -m frontend                                                              
   ancora; con l'agente spento l'invio dà 503 `L'agente non è raggiungibile …` (con l'header CORS, quindi la
   pagina lo può mostrare) e la chat resta con due messaggi. **Da provare a vista nel browser.**
 
-## Avvio con Docker
+## Applicazione completa con Docker Compose (lezione 6, step 9)
+
+Quattro container, un comando. LM Studio resta sull'host (con «Serve on Local Network» attivo).
+
+```powershell
+# una volta: nel file .env le credenziali di PostgreSQL (vedi .env.example)
+#   POSTGRES_USER=lab   POSTGRES_PASSWORD=...   POSTGRES_DB=lab
+docker compose up -d --build      # poi aprire http://localhost:8090
+docker compose ps                 # quattro servizi attivi
+docker compose logs -f agente     # strumenti usati, log del grafo
+docker compose down               # le chat restano nel volume postgres (down -v le cancella)
+```
+
+| Servizio | Cosa fa | Porta sull'host |
+|---|---|---|
+| `frontend` | nginx: pagina di chat, `/config.js` con `backend = "/api"`, proxy `/api/` → `backend:8080` | **8090** |
+| `backend` | `python -m backend` (immagine `backend/Dockerfile`), avviato a database pronto | nessuna |
+| `agente` | `python -m agente.servizio`, server MCP stdio nel container, LM Studio su `host.docker.internal` | **nessuna** |
+| `db` | `postgres:16` ufficiale, dati nel volume `postgres`, healthcheck `pg_isready` | nessuna |
+
+- Il browser parla solo con il front-end; le API passano dal proxy (stessa origine, niente CORS). Il
+  front-end parte solo quando il back-end è pronto (healthcheck), così nginx non risponde 502 all'avvio.
+- Con `POSTGRES_*` mancanti `docker compose` si ferma con `imposta POSTGRES_PASSWORD nel file .env`.
+- La chat da terminale resta disponibile: `docker compose run --rm assistente` (profilo `cli`, non parte con `up`).
+
+Verificato il 2026-11-15: `docker compose ps` → `agente`, `backend`, `db` (healthy), `frontend`
+(`0.0.0.0:8090->80/tcp`), nessun'altra porta pubblicata; dall'host `localhost:8000` e `localhost:8080` rifiutano
+la connessione. Via `http://localhost:8090/api` «Quanto fa 15 per 12?» → «15 per 12 fa 180.», nel log
+dell'agente `strumento=calcola origine=mcp:calcolatrice … esito=ok` e `api: POST /chat cronologia=0 -> 200
+strumenti=[calcola] in 69.4 s`. Dopo `down` e `up` la chat c'è ancora. Con `docker compose stop agente`
+l'invio dà 503 `L'agente non è raggiungibile su http://agente:8000 …` e la chat resta invariata.
+**La prova a vista nel browser va ancora fatta.**
+
+## Avvio con Docker (chat da terminale)
 
 LM Studio resta sull'host; il container lo raggiunge su `http://host.docker.internal:1234/v1`.
 
 ```powershell
-docker compose build
+docker compose build assistente
 docker compose run --rm assistente
 ```
 
+- Il servizio `assistente` è nel profilo `cli`: `docker compose run` lo avvia lo stesso, `up` no.
 - Si usa `run` e non `up`, perché la chat ha bisogno di uno stdin interattivo; `--rm` elimina il
   container all'uscita.
 - Verificato su questo PC con LM Studio in ascolto su `0.0.0.0:1234` («Serve on Local Network»
@@ -294,7 +328,7 @@ docker compose run --rm assistente
 python -m pytest
 ```
 
-Esito del 2026-11-15, con `POSTGRES_URL` impostata (test dell'archivio anche su PostgreSQL): `449 passed, 37 skipped`
+Esito del 2026-11-15, con `POSTGRES_URL` impostata (test dell'archivio anche su PostgreSQL): `457 passed, 37 skipped`
 (le prove reali risultano `skipped` senza `PROVA_REALE`). I test non richiedono
 LM Studio: il grafo usa un modello finto e lo strumento un istante fissato.
 
@@ -530,7 +564,9 @@ lab_llm/
 ├── agente/            codice: config, strumenti, mcp_ponte, preferenze, comandi, graph, llm, client, nucleo,
 │                      main (chat locale), servizio (API HTTP), cli (chat client dell'API)
 ├── backend/           back-end delle chat (step 7): config, archivio (PostgreSQL), agente_remoto, api
-├── frontend/          front-end di chat (step 8): static/ (index.html, stile.css, app.js), __main__ = server locale
+├── compose.yaml       quattro servizi (frontend, backend, agente, db) + profili cli, fastapi, http
+├── frontend/          front-end di chat (step 8): static/ (index.html, stile.css, app.js), __main__ = server locale,
+│                      Dockerfile + nginx.conf.template (step 9)
 ├── servizio_orologio/ logica condivisa dell'orologio (logica.py) e servizio FastAPI (api.py)
 ├── server_mcp/        server MCP (processi separati): meteo, note, unita, calcolatrice, scadenze, catalogo, orologio,
 │                      utente (resource utente://preferenze); avvio.py = stdio o Streamable HTTP;

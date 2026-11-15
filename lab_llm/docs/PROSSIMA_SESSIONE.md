@@ -54,7 +54,11 @@
   PostgreSQL) su `feat/backend`, unito in `dev`.
 - Step 8 (front-end, `python -m frontend`) su `feat/frontend`, unito in `dev`. Prova a vista nel browser
   ancora da fare.
-- Prossimo: step 9 (Docker Compose con quattro container).
+- Step 9 (Docker Compose, quattro container) su `feat/compose`, unito in `dev`. **Lezione 6 completa.**
+- Resta da fare a mano: prova a vista nel browser (http://localhost:8090 dopo `docker compose up -d --build`):
+  conversazione con uno strumento, chat presente dopo `down`/`up`, `docker compose stop agente` → errore nel
+  banner senza blocchi. Poi, su richiesta, `dev` → `main` con il tag `lezione-6` e il push.
+- Facoltativo (slide «Se manca»): streaming della risposta dall'agente al browser, non fatto.
 
 ## Prompt da incollare (ripartenza)
 ```

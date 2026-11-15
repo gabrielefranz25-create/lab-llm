@@ -22,10 +22,11 @@ La cartella del progetto è `lab_llm/`. Specifica e piano sono in `lab_llm/docs/
 - `docs/`: `COME_FUNZIONA.md`, `GRAFO_E_STRUMENTI.md`, `PERCORSO_PROGETTO.md`, `GUIDA_DOCKER.md`,
   `GUIDA_PASSO_PASSO.md`, `PROSSIMA_SESSIONE.md`, specifica e piano.
 - `.env.example` (in Git) → `.env` (fuori da Git); `requirements.txt` + `requirements-dev.txt`;
-  `Dockerfile`, `compose.yaml`.
+  `Dockerfile` (agente), `backend/Dockerfile`, `frontend/Dockerfile`, `compose.yaml` (quattro servizi + profili).
 
 ## Comandi (PowerShell, dalla cartella `lab_llm/`, venv `.venv` attivo)
-- Avvio: `python -m agente`. Docker: `docker compose build`, poi `docker compose run --rm assistente`.
+- Avvio: `python -m agente`. Docker, applicazione completa: `docker compose up -d --build`, poi
+  http://localhost:8090 (credenziali `POSTGRES_*` nel `.env`); chat da terminale: `docker compose run --rm assistente`.
 - Agente come servizio HTTP: `python -m agente.servizio` (OpenAPI su `/docs`), chat client dell'API
   `python -m agente.cli`.
 - Back-end: `$env:DATABASE_URL="postgresql://lab:lab@localhost:55432/lab"; python -m backend` (porta 8080,
