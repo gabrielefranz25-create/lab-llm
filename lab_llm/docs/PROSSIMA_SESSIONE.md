@@ -1,115 +1,50 @@
-# Prossima sessione
+# Prossima sessione (handoff)
 
-## Stato al 2026-11-09 (lezione 5 chiusa)
-- Lezione 5 **chiusa**: `main` portato avanti fino a `dev` (fast-forward) e tag `lezione-5`. Push non ancora fatto
-  (`git push origin main dev lezione-5`, solo su richiesta).
-- Ultimi esiti: `python -m pytest` → `122 passed, 10 skipped`; prove reali MCP → `6 passed`.
-- Nuovi documenti da **aggiornare a ogni modifica**: `docs/GRAFO_E_STRUMENTI.md` (grafo, stato,
-  strumenti) e `docs/PERCORSO_PROGETTO.md` (passi in ordine con skill, prompt e modalità).
-- Flusso dei branch (in `CLAUDE.md`): feature branch da `dev` → merge in `dev` → a fine sessione
-  `dev` → `main` + tag `lezione-N`.
-- Resta da provare a mano: `docker compose run --rm assistente` con la tty interattiva; facoltativo
-  MCP Inspector (`npx @modelcontextprotocol/inspector python -m server_mcp.meteo`).
+Riscritto da capo a ogni fine sessione; le versioni precedenti sono nella cronologia Git
+(`git log -p docs/PROSSIMA_SESSIONE.md`), il percorso completo in `docs/PERCORSO_PROGETTO.md`.
 
-## Stato al 2026-11-09 (lezione 6, step 1 fatto)
-- Step 1 (router) completato su `feat/router`: spec `docs/superpowers/specs/2026-11-09-router-design.md`,
-  piano `docs/superpowers/plans/2026-11-09-router.md`. Esiti: `132 passed, 12 skipped`; prove reali del
-  router `2 passed`; prova a mano con domanda in ambito, seguito «e domani?» e domanda fuori ambito.
-- Prossimo: step 2 (revisore). Il prompt di partenza è quello del PDF (vedi `docs/PERCORSO_PROGETTO.md`).
+## 1. Data e punto del corso
+2026-11-16. Lezione 6 **chiusa** (step 1–9). Prossima: lezione 7, non ancora iniziata.
 
-## Stato al 2026-11-11 (completamento della lezione 5, blocco A fatto)
-- Branch `feat/strumenti-proposte`, **verificato ma non ancora unito in `dev`** (il merge va confermato):
-  server `unita`, `calcolatrice`, `scadenze`, `catalogo`; ambito del router composto dai server attivi;
-  istruzione sui conti nel prompt solo con `calcola` collegato.
-- Esiti: `python -m pytest` → 253 passed, 17 skipped; prove reali (`-m reale`) → 17 passed;
-  `docker compose build` ok e chat nel container via pipe ok; revisione finale fatta (rilievi minori
-  rimandati, elencati in `docs/PERCORSO_PROGETTO.md`).
-- Se il PC va in sospensione durante i test, le esecuzioni durano ore: tenerlo sveglio.
-- Tabella di marcia della lezione 5: dopo il blocco A, blocco B (tre varianti dell'orologio: locale,
-  FastAPI + wrapper HTTP, FastMCP, una attiva con `VARIANTE_OROLOGIO`) e blocco C (Streamable HTTP in
-  locale, catalogo identico a stdio). Poi si riprende la lezione 6 dallo step 2 (revisore).
+## 2. Fatto in questa sessione
+- Branch `docs/guida-test`, unito in `dev`: nuova guida `docs/GUIDA_TEST.md` (prove a mano passo per passo:
+  LM Studio, Docker Desktop, PowerShell, test automatici, chat locale, pagina nel browser, chat Docker,
+  checklist, consigli su skill e token).
+- Questo file trasformato in handoff a sezioni fisse; regola in `CLAUDE.md` (sezione Documentazione).
+- Nessuna modifica al codice.
 
-## Stato al 2026-11-13 (blocco B fatto)
-- Blocco A unito in `dev`. Blocco B (tre varianti dell'orologio, `VARIANTE_OROLOGIO`) su
-  `feat/varianti-orologio`, unito in `dev` dopo la verifica.
-- Modalità concordata il 2026-11-12: **autonomia** («fai tutto»): per ogni blocco/step spec e piano
-  scritti e committati senza attendere l'approvazione, resoconto a fine blocco. Push solo su richiesta.
-- Blocco C (Streamable HTTP, `TRASPORTO_MCP`) fatto su `feat/mcp-http`. Lezione 5 completa.
-- Ordine rimasto: lezione 6 dallo step 2 (revisore) allo step 9.
-- Step 2 avviato sul branch `feat/revisore` (da `dev`): specifica scritta
-  (`docs/superpowers/specs/2026-11-13-revisore-design.md`); mancano piano e implementazione.
+## 3. Esiti delle verifiche
+- Ultima suite completa (2026-11-16, chiusura lezione 6): `python -m pytest` → 449 passed, 45 skipped.
+- Compose (quattro container, LM Studio acceso): risposta con strumento dal proxy `/api/`, chat presente
+  dopo `down`/`up`, agente fermato → 503 leggibile e nulla salvato. Prova a vista con Chrome headless.
+- In questa sessione solo documenti: nessun test rieseguito.
 
-## Stato al 2026-11-14 (step 2 fatto)
-- Step 2 (revisore) su `feat/revisore`, unito in `dev`: nodo `revisore` dopo l'agente, `MAX_REVISIONI`
-  (default 2), nota del revisore nella cronologia. Prove reali in `tests/reale/test_revisore_reale.py`.
-- Step 3 (riassunto come campo dello stato) su `feat/riassunto`, unito in `dev`.
-- Step 4 (resource `utente://preferenze`, server `utente`) su `feat/preferenze`, unito in `dev`.
-- Step 5 (prompt MCP, `/prompts` e `/prompt`) su `feat/prompt-mcp`, unito in `dev`.
-- Step 6 (agente come servizio HTTP: `python -m agente.servizio`, `python -m agente.cli`) su
-  `feat/agente-http`, unito in `dev`.
-- Prossimo: step 7 (back-end con PostgreSQL), poi 8–9.
+## 4. Stato Git
+- Branch di lavoro: `dev`. `main` è fermo al tag `lezione-6` (`d9872d3`); `dev` ha in più i commit della guida.
+- Tag locali: `lezione-3`, `lezione-4`, `lezione-5`, `lezione-6`.
+- **Non pushato**: tutta la lezione 6 e questa guida. Sul remoto `origin/main` = `lezione-5`,
+  `origin/dev` = `6d5109d`, tag `lezione-3` e `lezione-5`. Quando richiesto:
+  `git push origin main dev lezione-4 lezione-6` (prima, se si vuole la guida anche su `main`,
+  fast-forward di `main` a `dev`).
+- Feature branch locali tutti già uniti in `dev` (si possono cancellare con `git branch -d`).
 
-## Stato al 2026-11-15 (step 7 fatto)
-- Step 6 unito in `dev` (i documenti non erano ancora committati). Step 7 (back-end, `python -m backend`,
-  PostgreSQL) su `feat/backend`, unito in `dev`.
-- Step 8 (front-end, `python -m frontend`) su `feat/frontend`, unito in `dev`. Prova a vista nel browser
-  ancora da fare.
-- Step 9 (Docker Compose, quattro container) su `feat/compose`, unito in `dev`. **Lezione 6 completa.**
-- Resta da fare a mano: prova a vista nel browser (http://localhost:8090 dopo `docker compose up -d --build`):
-  conversazione con uno strumento, chat presente dopo `down`/`up`, `docker compose stop agente` → errore nel
-  banner senza blocchi. Poi, su richiesta, `dev` → `main` con il tag `lezione-6` e il push.
-- Facoltativo (slide «Se manca»): streaming della risposta dall'agente al browser, non fatto.
+## 5. Da provare a mano / aperti
+- Pagina nel browser vero: `docs/GUIDA_TEST.md`, sezione 4 (conversazione, più chat, eliminazione,
+  persistenza, banner con agente spento).
+- `docker compose run --rm assistente` con la tastiera (sezione 5 della guida).
+- Facoltativi: streaming della risposta al browser (non fatto); MCP Inspector.
 
-## Stato al 2026-11-16 (lezione 6 chiusa)
-- Verifica finale: `python -m pytest` → 449 passed, 45 skipped. In Compose (quattro container, LM Studio
-  acceso): risposta con `ora_corrente` dal proxy `/api/`, chat presente dopo `down`/`up`, agente fermato →
-  503 leggibile e nulla salvato.
-- Prova a vista fatta con Chrome headless: trovato e corretto il banner d'errore che restava visibile vuoto
-  (`fix/banner-nascosto`, unito in `dev`).
-- Nota: l'agente impiega ~20 s ad avviarsi (cataloghi MCP); in quell'intervallo la pagina mostra «non pronto»
-  e l'invio risponde 503: è il comportamento previsto.
-- `main` portato a `dev` (fast-forward) con il tag `lezione-6`. **Push non fatto**: quando richiesto,
-  `git push origin main dev lezione-4 lezione-6` (il remoto è fermo alla lezione 5; `lezione-4` è solo locale).
-- Facoltativo ancora aperto: streaming della risposta; prova a mano nel browser vero (clic, banner con agente
-  spento).
+## 6. Prossimo passo
+Fare le prove della guida e spuntare la checklist (sezione 9). Poi, su richiesta, push. Poi lezione 7.
 
-## Prompt da incollare (ripartenza)
+## 7. Prompt di ripartenza
 ```
-Leggi il CLAUDE.md e docs/PROSSIMA_SESSIONE.md e controlla lo stato della repository.
-Continuiamo in autonomia dal primo step non fatto della lezione 6: spec e piano in docs/superpowers/, feature branch da dev, test, prove reali con LM Studio,
-Docker, documenti aggiornati, merge in dev (niente push).
-```
-
-## Lezione 6: evolvere l'agente
-Materiale: `materiali/LLM_Lez_6.pdf` e gli appunti `materiali/grafo, mcp, interfaccia ed architet.txt`,
-`materiali/altre info.txt`. Nove step, uno alla volta (tabella in `docs/PERCORSO_PROGETTO.md`):
-1 Router · 2 Revisore · 3 Riassunto · 4 Resource · 5 Prompt MCP · 6 Agente HTTP · 7 Back-end +
-PostgreSQL · 8 Front-end · 9 Docker Compose con 4 container.
-
-- Per ogni step servono spec e piano approvati, test con il modello simulato, prova reale, README e i due
-  documenti aggiornati, e un commit (Conventional Commits).
-- Lo step 3 è già in parte coperto dal nodo `compatta`. Mancano il riassunto come campo dello stato
-  (non un `SystemMessage` dentro `messages`) e il log con il numero di messaggi prima e dopo.
-
-## Prompt da incollare (step 1)
-```
-Leggi il CLAUDE.md e controlla lo stato della repository.
-Vogliamo realizzare lo step 1 della lezione 6 (materiali/LLM_Lez_6.pdf) – Router: conversazione o
-fuori ambito. L'agente ha un ambito dichiarato in configurazione; un nodo LLM prima dell'agente,
-con output strutturato (categoria e motivo), decide se la domanda rientra nell'ambito; arco
-condizionale: conversazione → agente, fuori ambito → nodo di rifiuto → fine. Il router non valuta
-gli strumenti. Evidenze: log con categoria, motivo e passaggio all'agente; domanda fuori ambito
-rifiutata senza esecuzione del nodo agente; test con router simulato per entrambi i percorsi.
-Il progetto attuale funziona fino alla lezione 5: estendilo senza riscriverlo e non anticipare gli
-step successivi. Lavora su un feature branch creato da dev.
-Chiariscimi le decisioni mancanti e proponi una soluzione semplice. Distingui i test con il modello
-simulato dalle prove reali con LM Studio. Le evidenze richieste devono essere verificabili nei log o
-nei test.
-Non iniziare l'implementazione prima dell'approvazione della specifica e del piano.
-A fine step aggiorna docs/GRAFO_E_STRUMENTI.md e docs/PERCORSO_PROGETTO.md.
+Leggi CLAUDE.md e docs/PROSSIMA_SESSIONE.md, poi git status. Step: <nome> della lezione N
+(materiali/LLM_Lez_N.pdf, slide X–Y). Spec e piano brevi in docs/superpowers/, branch da dev,
+test con modello simulato + una prova reale mirata, documenti aggiornati solo a fine step, merge in dev, niente push.
+A fine sessione riscrivi docs/PROSSIMA_SESSIONE.md (handoff).
 ```
 
 ## Prima di iniziare
-- Aprire Claude Code nella cartella `repo-lab-llm_l4` (oppure `lab_llm`).
-- Avere LM Studio acceso con `google/gemma-4-e2b` caricato e la rete attiva (il meteo usa Open-Meteo).
-- Avviare Docker Desktop se servono le prove in container.
+- LM Studio acceso con `google/gemma-4-e2b` e «Serve on Local Network»; rete attiva (meteo).
+- Docker Desktop avviato se servono le prove in container. PC sveglio durante le prove reali.

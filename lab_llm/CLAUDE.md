@@ -20,7 +20,8 @@ La cartella del progetto è `lab_llm/`. Specifica e piano sono in `lab_llm/docs/
   `catalogo`, `orologio`, `utente` con la resource delle preferenze e i prompt `spiega`, `riassumi_conversazione`); dati in `server_mcp/risorse/` (non `dati/`, esclusa da Git); non dipendono da `agente/`.
 - `tests/`: test automatici senza modello; `tests/reale/`: prove con LM Studio vero.
 - `docs/`: `COME_FUNZIONA.md`, `GRAFO_E_STRUMENTI.md`, `PERCORSO_PROGETTO.md`, `GUIDA_DOCKER.md`,
-  `GUIDA_PASSO_PASSO.md`, `PROSSIMA_SESSIONE.md`, specifica e piano.
+  `GUIDA_PASSO_PASSO.md`, `GUIDA_TEST.md` (prove a mano passo per passo), `PROSSIMA_SESSIONE.md` (handoff),
+  specifica e piano.
 - `.env.example` (in Git) → `.env` (fuori da Git); `requirements.txt` + `requirements-dev.txt`;
   `Dockerfile` (agente), `backend/Dockerfile`, `frontend/Dockerfile`, `compose.yaml` (quattro servizi + profili).
 
@@ -105,5 +106,11 @@ Un'applicazione da terminale in Python che conversa con un modello locale e:
   comandi verificati.
 - A ogni modifica del progetto aggiornare anche `docs/GRAFO_E_STRUMENTI.md` (grafo, stato,
   strumenti) e `docs/PERCORSO_PROGETTO.md` (passi in ordine, con skill, prompt e modalità usati).
+- Handoff: a fine sessione, prima dell'ultimo commit, riscrivere da capo `docs/PROSSIMA_SESSIONE.md`
+  (niente diario: lo storico resta in Git e in `PERCORSO_PROGETTO.md`) con queste sezioni: data e
+  lezione/step; fatto in questa sessione (branch e commit); esiti delle verifiche con i numeri; stato Git
+  (branch, merge in `dev`/`main`, tag, cosa non è pushato); da provare a mano e problemi aperti; prossimo
+  passo; prompt di ripartenza.
+- Se cambiano le prove a mano (avvio, pagina, comandi), aggiornare `docs/GUIDA_TEST.md`.
 - Aggiornare questo file quando cambiano convenzioni stabili (struttura, comandi di test,
   regole di lavoro), non per annotare l'avanzamento.

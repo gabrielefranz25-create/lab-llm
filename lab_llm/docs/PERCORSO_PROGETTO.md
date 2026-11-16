@@ -326,6 +326,13 @@ Materiale: `materiali/LLM_Lez_6.pdf`. Uno step alla volta, ciascuno con spec, pi
    ricostruzione la pagina mostra «pronto» e nessun banner.
 4. `docs`: questo passo e `PROSSIMA_SESSIONE.md`; `dev` → `main` con il tag `lezione-6`, senza push.
 
+#### Guida ai test e handoff (16/11). Branch `docs/guida-test`
+- Prompt: stato del progetto, guida passo passo per testarlo (clic, tasti, testo), consigli su skill e
+  token, documento di handoff a ogni fine sessione; plan mode, poi modalità auto.
+1. `docs`: `docs/GUIDA_TEST.md` (preparazione di LM Studio, Docker e PowerShell; test automatici; chat
+   locale; pagina nel browser con persistenza ed errore; chat Docker; checklist; uso di Claude Code).
+2. `docs`: `PROSSIMA_SESSIONE.md` riscritto come handoff con sezioni fisse; regola in `CLAUDE.md`.
+
 | Step | Cosa | Evidenza minima | Stato |
 |---|---|---|---|
 | 1 | Router: in ambito o fuori ambito | domanda fuori ambito rifiutata senza passare dall'agente | fatto (`feat/router`) |
