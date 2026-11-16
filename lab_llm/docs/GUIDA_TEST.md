@@ -246,6 +246,8 @@ deactivate                 # esce dall'ambiente Python
 | `error during connect` / `docker daemon is not running` | Docker Desktop spento | sezione 1.2 |
 | `port is already allocated` sulla 8090 | un altro programma usa la porta (per esempio `python -m frontend` aperto) | chiudi l'altro programma e rilancia `docker compose up -d` |
 | Il browser dice «Impossibile raggiungere il sito» | container `frontend` non avviato | `docker compose ps`; se manca, `docker compose up -d --build` |
+| `Errore dallo strumento meteo_attuale: servizio meteo non raggiungibile (ReadTimeout)` | Open-Meteo lento (ogni domanda fa due richieste da qualche secondo) | riprova; se succede spesso alza `METEO_TIMEOUT` nel `.env` (per esempio 20) e `MCP_TIMEOUT` a più del doppio (per esempio 45) |
+| `… non raggiungibile (ConnectError)` | niente Internet, o il servizio è giù | controlla la connessione |
 | Risposta che non usa lo strumento | comportamento del modello piccolo | riprova la domanda; vedi «Diagnosi per livelli» nel README |
 | `.\.venv\Scripts\Activate.ps1` non parte | criteri di esecuzione di PowerShell | sezione 1.3, punto 3 |
 

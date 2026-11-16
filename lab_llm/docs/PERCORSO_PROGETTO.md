@@ -333,6 +333,14 @@ Materiale: `materiali/LLM_Lez_6.pdf`. Uno step alla volta, ciascuno con spec, pi
    locale; pagina nel browser con persistenza ed errore; chat Docker; checklist; uso di Claude Code).
 2. `docs`: `PROSSIMA_SESSIONE.md` riscritto come handoff con sezioni fisse; regola in `CLAUDE.md`.
 
+#### Prima prova a mano con la guida (16/11). Branch `fix/meteo-dettaglio`
+- Prompt: output delle prove incollato dall'utente; plan mode, poi modalità auto.
+- Skill: `superpowers:test-driven-development`.
+1. Esiti: chat locale e browser ok; una volta il meteo ha dato `servizio meteo non raggiungibile`
+   (Open-Meteo lento, 3,5–7 s a domanda).
+2. `fix(meteo)`: il messaggio indica il tipo di errore (`ReadTimeout`, `ConnectError`), test
+   `test_errore_di_rete_indica_il_tipo`; riga nella tabella dei problemi di `GUIDA_TEST.md`.
+
 | Step | Cosa | Evidenza minima | Stato |
 |---|---|---|---|
 | 1 | Router: in ambito o fuori ambito | domanda fuori ambito rifiutata senza passare dall'agente | fatto (`feat/router`) |
