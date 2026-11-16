@@ -60,6 +60,19 @@
   banner senza blocchi. Poi, su richiesta, `dev` → `main` con il tag `lezione-6` e il push.
 - Facoltativo (slide «Se manca»): streaming della risposta dall'agente al browser, non fatto.
 
+## Stato al 2026-11-16 (lezione 6 chiusa)
+- Verifica finale: `python -m pytest` → 449 passed, 45 skipped. In Compose (quattro container, LM Studio
+  acceso): risposta con `ora_corrente` dal proxy `/api/`, chat presente dopo `down`/`up`, agente fermato →
+  503 leggibile e nulla salvato.
+- Prova a vista fatta con Chrome headless: trovato e corretto il banner d'errore che restava visibile vuoto
+  (`fix/banner-nascosto`, unito in `dev`).
+- Nota: l'agente impiega ~20 s ad avviarsi (cataloghi MCP); in quell'intervallo la pagina mostra «non pronto»
+  e l'invio risponde 503: è il comportamento previsto.
+- `main` portato a `dev` (fast-forward) con il tag `lezione-6`. **Push non fatto**: quando richiesto,
+  `git push origin main dev lezione-4 lezione-6` (il remoto è fermo alla lezione 5; `lezione-4` è solo locale).
+- Facoltativo ancora aperto: streaming della risposta; prova a mano nel browser vero (clic, banner con agente
+  spento).
+
 ## Prompt da incollare (ripartenza)
 ```
 Leggi il CLAUDE.md e docs/PROSSIMA_SESSIONE.md e controlla lo stato della repository.

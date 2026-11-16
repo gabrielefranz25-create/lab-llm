@@ -313,6 +313,19 @@ Materiale: `materiali/LLM_Lez_6.pdf`. Uno step alla volta, ciascuno con spec, pi
 - Evidenze (2026-11-15): `docker compose ps` con quattro servizi e solo la porta 8090; chat via proxy con
   `calcola` nei log dell'agente; chat presente dopo `down`/`up`; agente fermato → 503 leggibile.
 
+#### Chiusura della lezione 6 (16/11). Branch `fix/banner-nascosto`
+- Prompt: «puoi finire senza pusharlo»; modalità auto, piano breve approvato in plan mode.
+- Skill e modalità: `superpowers:test-driven-development` per la correzione,
+  `superpowers:verification-before-completion` per la chiusura.
+1. Verifica completa in Compose: `python -m pytest` → 449 passed, 45 skipped; `docker compose up -d --build`;
+   via proxy «Che ore sono adesso a Tokyo?» → `ora_corrente` con `Asia/Tokyo`, ora corretta; chat presente
+   dopo `down`/`up`; `docker compose stop agente` → 503 leggibile, elenco chat ancora 200, nulla salvato.
+2. Prova a vista con Chrome headless (screenshot): il banner d'errore rosso compariva **vuoto** anche senza
+   errori, perché `display: flex` di `.errore` prevaleva sull'attributo `hidden`.
+3. `fix(frontend)`: regola `[hidden] { display: none !important; }` e test su `stile.css`; dopo la
+   ricostruzione la pagina mostra «pronto» e nessun banner.
+4. `docs`: questo passo e `PROSSIMA_SESSIONE.md`; `dev` → `main` con il tag `lezione-6`, senza push.
+
 | Step | Cosa | Evidenza minima | Stato |
 |---|---|---|---|
 | 1 | Router: in ambito o fuori ambito | domanda fuori ambito rifiutata senza passare dall'agente | fatto (`feat/router`) |
