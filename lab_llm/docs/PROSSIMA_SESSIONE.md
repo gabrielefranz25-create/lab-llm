@@ -28,13 +28,9 @@ Riscritto da capo a ogni fine sessione; le versioni precedenti sono nella cronol
 - Dopo `fix/meteo-dettaglio`: `python -m pytest -q -x` → 451 passed, 45 skipped.
 
 ## 4. Stato Git
-- Branch di lavoro: `dev`. `main` è fermo al tag `lezione-6` (`d9872d3`); `dev` ha in più i commit della guida.
-- Tag locali: `lezione-3`, `lezione-4`, `lezione-5`, `lezione-6`.
-- **Non pushato**: tutta la lezione 6 e questa guida. Sul remoto `origin/main` = `lezione-5`,
-  `origin/dev` = `6d5109d`, tag `lezione-3` e `lezione-5`. Quando richiesto:
-  `git push origin main dev lezione-4 lezione-6` (prima, se si vuole la guida anche su `main`,
-  fast-forward di `main` a `dev`).
-- Feature branch locali tutti già uniti in `dev` (si possono cancellare con `git branch -d`).
+- `main` = `dev` (fast-forward a fine sessione), **pushati** su `origin` il 2026-11-16 insieme ai tag
+  `lezione-4` e `lezione-6` (il tag `lezione-6` resta sul commit di chiusura della lezione, `d9872d3`).
+- Feature branch locali tutti già uniti in `dev`, non pushati (si possono cancellare con `git branch -d`).
 
 ## 5. Da provare a mano / aperti
 - Fatte: chat locale (saluto, ora, calcolo, meteo, rifiuto); browser con meteo e rifiuto.
@@ -47,13 +43,15 @@ Riscritto da capo a ogni fine sessione; le versioni precedenti sono nella cronol
 - Facoltativi: streaming della risposta al browser (non fatto); MCP Inspector.
 
 ## 6. Prossimo passo
-Fare le prove della guida e spuntare la checklist (sezione 9). Poi, su richiesta, push. Poi lezione 7.
+**Lezione 7** (`materiali/LLM_Lez_7.pdf`), dopo un `/clear`. Le prove a mano rimaste (sezione 5) si possono
+fare in parallelo: non bloccano la lezione 7.
 
 ## 7. Prompt di ripartenza
 ```
-Leggi CLAUDE.md e docs/PROSSIMA_SESSIONE.md, poi git status. Step: <nome> della lezione N
-(materiali/LLM_Lez_N.pdf, slide X–Y). Spec e piano brevi in docs/superpowers/, branch da dev,
-test con modello simulato + una prova reale mirata, documenti aggiornati solo a fine step, merge in dev, niente push.
+Leggi CLAUDE.md e docs/PROSSIMA_SESSIONE.md, poi git status. Iniziamo la lezione 7
+(materiali/LLM_Lez_7.pdf): leggi il PDF, riassumimi gli step/requisiti e proponimi l'ordine.
+Per ogni step: spec e piano brevi in docs/superpowers/, feature branch da dev, test con modello
+simulato + una prova reale mirata, documenti aggiornati a fine step, merge in dev, niente push.
 A fine sessione riscrivi docs/PROSSIMA_SESSIONE.md (handoff).
 ```
 
