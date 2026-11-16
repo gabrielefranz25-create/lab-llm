@@ -61,6 +61,8 @@ domanda (router, strumenti, revisore). Nel log: `prompt: richiamato spiega argom
 
 Come funziona dentro (grafo, stato, nodi, strumenti, ponte MCP, log): [docs/COME_FUNZIONA.md](docs/COME_FUNZIONA.md).
 Docker su Windows e risoluzione dei problemi: [docs/GUIDA_DOCKER.md](docs/GUIDA_DOCKER.md).
+Prove a mano passo per passo (dove cliccare, che cosa scrivere, che cosa deve comparire):
+[docs/GUIDA_TEST.md](docs/GUIDA_TEST.md).
 
 Tutti i comandi qui sotto sono stati eseguiti su Windows 11 con PowerShell 5.1, dalla cartella
 `lab_llm/`, e partono da questa cartella.
@@ -572,7 +574,7 @@ lab_llm/
 │                      utente (resource utente://preferenze); avvio.py = stdio o Streamable HTTP;
 │                      avvia_http.py = tutti i server in HTTP; risorse/ = festivita.json, corsi.json, preferenze.json
 ├── tests/             test automatici; tests/reale/ = prove con LM Studio (PROVA_REALE=1)
-├── docs/              COME_FUNZIONA, GUIDA_DOCKER, GUIDA_PASSO_PASSO, PROSSIMA_SESSIONE, specifica e piano (superpowers/)
+├── docs/              COME_FUNZIONA, GUIDA_DOCKER, GUIDA_PASSO_PASSO, GUIDA_TEST, PROSSIMA_SESSIONE, specifica e piano (superpowers/)
 ├── .env.example       variabili d'esempio (.env reale fuori da Git)
 ├── requirements.txt   requirements-dev.txt   pytest.ini
 └── Dockerfile         compose.yaml           .dockerignore
