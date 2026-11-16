@@ -103,7 +103,8 @@ def _richiedi(client: httpx.Client, url: str, parametri: dict) -> dict:
     try:
         risposta = client.get(url, params=parametri)
     except (httpx.TimeoutException, httpx.TransportError) as errore:
-        raise _errore("servizio meteo non raggiungibile") from errore
+        # Il tipo distingue un timeout (METEO_TIMEOUT troppo basso) da un problema di rete.
+        raise _errore(f"servizio meteo non raggiungibile ({type(errore).__name__})") from errore
     if risposta.status_code >= 400:
         raise _errore(f"servizio meteo non disponibile (HTTP {risposta.status_code})")
     try:

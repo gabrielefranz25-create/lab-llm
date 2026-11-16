@@ -96,6 +96,16 @@ def test_timeout_distinto_da_http_500():
         meteo.testo_meteo_attuale(errore, "Udine")
 
 
+def test_errore_di_rete_indica_il_tipo():
+    """Il messaggio dice se è un timeout (alzare METEO_TIMEOUT) o un errore di rete."""
+    timeout = _client({"geocoding-api.open-meteo.com": httpx.ReadTimeout("lento")})
+    with pytest.raises(ErroreMeteo, match=r"servizio meteo non raggiungibile \(ReadTimeout\)"):
+        meteo.testo_meteo_attuale(timeout, "Udine")
+    rete = _client({"geocoding-api.open-meteo.com": httpx.ConnectError("rete assente")})
+    with pytest.raises(ErroreMeteo, match=r"servizio meteo non raggiungibile \(ConnectError\)"):
+        meteo.testo_meteo_attuale(rete, "Udine")
+
+
 def test_risposta_non_valida():
     client = _client({"geocoding-api.open-meteo.com": _geo(UDINE),
                       "api.open-meteo.com": {"timezone": "Europe/Rome"}})
