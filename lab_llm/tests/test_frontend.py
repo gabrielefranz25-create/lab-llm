@@ -59,3 +59,9 @@ def test_ogni_chiamata_di_app_js_esiste_nell_openapi_del_back_end():
 def test_i_dati_non_finiscono_in_inner_html():
     codice = (STATICI / "app.js").read_text(encoding="utf-8")
     assert "innerHTML" not in codice and "textContent" in codice
+
+
+def test_l_attributo_hidden_vince_sul_display_del_css():
+    """Il banner d'errore ha `display: flex`: senza questa regola resterebbe visibile (vuoto) anche se `hidden`."""
+    stile = (STATICI / "stile.css").read_text(encoding="utf-8")
+    assert re.search(r"\[hidden\]\s*\{\s*display:\s*none\s*!important;?\s*\}", stile)
